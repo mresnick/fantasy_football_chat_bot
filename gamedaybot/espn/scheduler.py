@@ -63,7 +63,7 @@ def scheduler():
 
     if data['monitor_report']:
         sched.add_job(espn_bot, 'cron', ['get_monitor'], id='monitor',
-                      day_of_week='sun', hour=7, minute=30, start_date=ff_start_date, end_date=ff_end_date,
+                      day_of_week='thu, sun, mon', hour=7, minute=30, start_date=ff_start_date, end_date=ff_end_date,
                       timezone=my_timezone, replace_existing=True)
 
     sched.add_job(espn_bot, 'cron', ['get_scoreboard_short'], id='scoreboard2',
