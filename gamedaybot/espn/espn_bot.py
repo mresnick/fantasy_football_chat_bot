@@ -173,6 +173,8 @@ def espn_bot(function):
         text = espn.get_projected_scoreboard(league)
     elif function == "get_close_scores":
         text = espn.get_close_scores(league)
+    elif function == "get_cmc_still_injured":
+        text = espn.get_cmc_still_injured(league)
     elif function == "get_power_rankings":
         text = espn.get_power_rankings(league)
     elif function == "get_trophies":

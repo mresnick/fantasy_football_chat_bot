@@ -70,5 +70,9 @@ def scheduler():
                   day_of_week='sun', hour='16,20', start_date=ff_start_date, end_date=ff_end_date,
                   timezone=game_timezone, replace_existing=True)
 
+    sched.add_job(espn_bot, 'cron', ['get_cmc_still_injured'], id='cmc',
+                  day_of_week='mon, tue, wed, thu, fri, sat, sun', hour=7, minute=31, start_date=ff_start_date, 
+                  end_date=ff_end_date, timezone=my_timezone, replace_existing=True)
+
     print("Ready!")
     sched.start()

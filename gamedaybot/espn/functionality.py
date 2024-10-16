@@ -966,3 +966,15 @@ def get_trophies(league, week=None, recap=False):
     text = ['Trophies of the week:'] + high_score_str + low_score_str + blowout_str + close_score_str + \
         get_lucky_trophy(league, week) + get_achievers_trophy(league, week) + optimal_team_scores(league, week) + get_most_active_and_laziest(league, week)
     return '\n'.join(text)
+
+
+def get_cmc_still_injured(league):
+    cmc = league.player_info(name = "Christian McCaffrey")
+    if cmc.injuryStatus in ('INJURY_RESERVE', 'OUT'):
+        answer = "Yes!"
+    elif cmc.injuryStatus in('QUESTIONABLE'):
+        answer = "Probably!"
+    else:
+        answer = "NO!!!!!!!!!!!! (but check the bot for bugs)"
+
+    return "\n".join(["Daily Report: Is CMC still injured?", answer])

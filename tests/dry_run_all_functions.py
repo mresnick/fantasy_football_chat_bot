@@ -25,7 +25,7 @@ print(espn.get_monitor(league))
 print(espn.get_matchups(league))
 print(espn.get_power_rankings(league))
 print(espn.optimal_team_scores(league, full_report=True))
-
+print(espn.get_cmc_still_injured(league))
 print(recap.win_matrix(league))
 
 try:
