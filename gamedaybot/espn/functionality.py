@@ -1,4 +1,6 @@
 from datetime import date
+from datetime import datetime
+from datetime import timedelta
 
 
 def get_scoreboard_short(league, week=None):
@@ -705,6 +707,82 @@ def optimal_team_scores(league, week=None, full_report=False, recap=False):
         return (best_mgr_str + worst_mgr_str)
 
 
+def get_most_active_and_laziest(league, week=None, recap=False):
+    if not week:
+        week = league.current_week - 1
+
+    teams = league.teams
+
+    first_game_date = league.espn_request.get_pro_schedule()['settings']['playerOwnershipSettings']['firstGameDate']
+    week_1_start_date = (datetime.fromtimestamp(first_game_date/1000) - timedelta(days=2)).replace(hour=7, minute=30, second=0, microsecond=0)
+
+    start_timestamp = datetime.timestamp(week_1_start_date + timedelta(weeks=(week - 1))) * 1000
+    end_timestamp = datetime.timestamp(week_1_start_date + timedelta(weeks=week)) * 1000
+
+    most_moves = 0
+    fewest_moves = 999
+
+    most_active = []
+    laziest = []
+
+    adds = {}
+    drops = {}
+    trades = {}
+
+    for team in teams:
+        adds[team] = 0
+        drops[team] = 0
+        trades[team] = 0
+
+    recent_activity = league.recent_activity(999)
+
+
+    for activity in recent_activity:
+        if activity.date > start_timestamp and activity.date < end_timestamp:
+             for action in activity.actions:
+                    team = action[0]
+                    action_type = action[1]
+                    if action_type in ('FA ADDED', 'WAIVER ADDED'):
+                        adds[team] = adds[team] + 1
+                    elif action_type == 'DROPPED':
+                        drops[team] = drops[team] + 1
+                    elif action_type == 'TRADED':
+                        trades[team] = trades[team] + 1
+
+    for team in teams:
+        total = adds[team] + drops[team] + trades[team]
+        if total > most_moves:
+            most_moves = total
+            most_active = [team]
+        elif total == most_moves:
+            most_active.append(team)
+        if total < fewest_moves:
+            fewest_moves = total
+            laziest = [team]
+        elif total == fewest_moves:
+            laziest.append(team)
+
+    if recap:
+        return [team.team_abbrev for team in most_active], [team.team_abbrev for team in laziest]
+
+    most_active_prefix = ['🤯 Most Active Manager 🤯']
+    laziest_prefix = ['😴 Laziest Manager 😴']
+
+    if len(most_active) == 1:
+        most_active_team_name = most_active[0].team_name
+        most_active_str = most_active_prefix + ['%s had %s adds, %s drops, and %s trades!' % (most_active_team_name, adds[most_active[0]], drops[most_active[0]], trades[most_active[0]])]
+    else:
+        most_active_str = most_active_prefix + ['%s were tied with %s moves!' % (", ".join([team.team_name for team in most_active]), most_moves)]
+
+    if len(laziest) == 1:
+        laziest_team_name = laziest[0].team_name
+        laziest_str = laziest_prefix + ['%s had %s adds, %s drops, and %s trades!' % (laziest_team_name, adds[laziest[0]], drops[laziest[0]], trades[laziest[0]])]
+    else:
+        laziest_str = laziest_prefix + ['%s were tied with %s moves!' % (", ".join([team.team_name for team in laziest]), fewest_moves)]
+
+    return (most_active_str + laziest_str)
+
+
 def get_achievers_trophy(league, week=None, recap=False):
     """
     This function returns the overachiever and underachiever of the league
@@ -886,5 +964,5 @@ def get_trophies(league, week=None, recap=False):
     blowout_str = ['😱 Blow out 😱']+['%s blew out %s by %.2f points' % (ownerer.team_name, blown_out.team_name, biggest_blowout)]
 
     text = ['Trophies of the week:'] + high_score_str + low_score_str + blowout_str + close_score_str + \
-        get_lucky_trophy(league, week) + get_achievers_trophy(league, week) + optimal_team_scores(league, week)
+        get_lucky_trophy(league, week) + get_achievers_trophy(league, week) + optimal_team_scores(league, week) + get_most_active_and_laziest(league, week)
     return '\n'.join(text)

@@ -7,28 +7,28 @@ services:
     restart: always
     environment:
       #Bot ID from the GroupMe developers page (REQUIRED IF USING GROUPME)
-      BOT_ID: "1"
+      # BOT_ID: "1"
       #Webhook URL from the Slack App page (REQUIRED IF USING SLACK)
-      SLACK_WEBHOOK_URL: "1"
+      #SLACK_WEBHOOK_URL: "1"
       #This is your Webhook URL from the Discord Settings page (REQUIRED IF USING DISCORD)
-      DISCORD_WEBHOOK_URL: "1"
+      DISCORD_WEBHOOK_URL: "https://discord.com/api/webhooks/1295887248624975923/0tr1z6DAe-_4oLE9vE6Nax0_-BY7exo-ivGiXf4eOgLgShvU43ekn-PlPP2iNdh0mVa-"
       #ESPN league id (REQUIRED)
-      LEAGUE_ID:
+      LEAGUE_ID: "1884046302"
       # #When the bot will start paying attention and sending messages to your chat.
-      # START_DATE:
+      # START_DATE: 
       # #When the bot will stop paying attention and stop sending messages to your chat.
       # END_DATE:
       # #ESPN League year
-      # LEAGUE_YEAR:
+      LEAGUE_YEAR: "2024"
       # #The timezone that the messages will look to send in. (America/New_York by default)
       # TIMEZONE:
-      # #The message that the bot will say when it is started (can be blank for no message)
-      # INIT_MSG:
+      #The message that the bot will say when it is started (can be blank for no message)
+      # INIT_MSG: "test bot up"
       # #If set to True, when standings are posted on Wednesday it will also include top half scoring wins
       # TOP_HALF_SCORING:
       # #If set to True, when matchups are posted on Tuesday it will also include a random phrase
       # RANDOM_PHRASE:
-      # #Used for private leagues. See Private Leagues Section for documentation
-      # ESPN_S2:
-      # #Used for private leagues. See Private Leagues Section for documentation
-      # SWID:
+      #Used for private leagues. See Private Leagues Section for documentation
+      ESPN_S2: "AEBWhY58nr0HcBr6YpxDn7EQ7RFo1G9s1Rst2X4SdTMMv9Hpr3pBXfbROYVFL6DoVpM6GPdct19SoTrcHOWpTldNaHA65f9YDW9rJO7oM9ZZNjrwdN3vCERr1kumYasnhwFlBMgCjJUQ8dxKTHvOfATM201iZSgt+us7nC6dLySsSSCRNrB5AAZ26ZNgvmIj3ejSLD/Qw2Vv+rmdNdi2BHXnHA3fNVR2zLf2cuK8Kpsq2e64l4J9TN1AGATEHrV5KZbAQFpXjfY0CMkxu9BjOKyTExIdh/DpGkLA1YiZcFqEKmyhQkY2FTFpKA+USPF00rO3/BxQaAMnzESWUi3EE1ja"
+      #Used for private leagues. See Private Leagues Section for documentation
+      SWID: "FA6E5CC1-EB95-46EF-94E6-31D5E863F696"

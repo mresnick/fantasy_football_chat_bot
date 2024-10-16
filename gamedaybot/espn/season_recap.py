@@ -25,9 +25,9 @@ def trophy_recap(league):
         A string that contains the team names and the number of trophies earned for each team
     """
 
-    ICONS = ['👑', '💩', '😱', '😅', '🍀', '😡', '📈', '📉', '🤡']
+    ICONS = ['👑', '💩', '😱', '😅', '🍀', '😡', '📈', '📉', '🤡', '🤯', '😴']
     legend = ['*LEGEND*', '👑: Most Points', '💩: Least Points', '😱: Blown out', '😅: Close wins', '🍀: Lucky',
-              '😡: Unlucky', '📈: Most over projection', '📉: Most under projection', '🤡: Most points left on bench']
+              '😡: Unlucky', '📈: Most over projection', '📉: Most under projection', '🤡: Most points left on bench', '🤯: Most active', '😴: Laziest']
     team_trophies = {}
     team_names = []
 
@@ -57,6 +57,13 @@ def trophy_recap(league):
         # Get most points left on bench trophy
         best_manager_team = espn.optimal_team_scores(league=league, week=week, recap=True)
         team_trophies[best_manager_team][8] += 1
+
+        # Get most active/laziest recap
+        most_active_teams, laziest_teams = espn.get_most_active_and_laziest(league=league, week=week, recap=True)
+        for team in most_active_teams:
+            team_trophies[team][9] += 1
+        for team in laziest_teams:
+            team_trophies[team][10] += 1
 
     result = 'Season Recap!\n'
     result += "Team".ljust(7, ' ')
