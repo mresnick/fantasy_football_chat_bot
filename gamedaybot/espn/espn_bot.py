@@ -20,6 +20,7 @@ else:
     from discord.ext import commands
     import discord
     import asyncio
+    from threading import Thread
 
 
 from espn_api.football import League
@@ -167,8 +168,8 @@ def espn_bot(function):
         bot = commands.Bot(command_prefix='$/%', intents=intents)
         cog = FantasyFootballCog(bot, league, discord_server)
         asyncio.run(bot.add_cog(cog))
-        bot.run(discord_token)
-
+        thread = Thread(target=start_bot, args=(bot, discord_token))
+        thread.start()
 
     try:
         broadcast_message = data['broadcast_message']
@@ -242,6 +243,8 @@ def espn_bot(function):
             slack_bot.send_message(message)
             discord_webhook.send_message(message)
 
+def start_bot(bot, discord_token):
+    bot.run(discord_token)
 
 if __name__ == '__main__':
     from gamedaybot.espn.scheduler import scheduler
