@@ -16,6 +16,10 @@ else:
     from gamedaybot.espn.env_vars import get_env_vars
     import gamedaybot.espn.functionality as espn
     import gamedaybot.espn.season_recap as recap
+    from gamedaybot.chat.discord_bot import FantasyFootballCog
+    from discord.ext import commands
+    import discord
+    import asyncio
 
 
 from espn_api.football import League
@@ -25,6 +29,8 @@ import logging
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.INFO)
 logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+logger.addHandler(handler)
 
 
 def espn_bot(function):
@@ -84,6 +90,7 @@ def espn_bot(function):
 
     data = get_env_vars()
     str_limit = data['str_limit']  # slack char limit
+    
 
     try:
         bot_id = data['bot_id']
@@ -141,12 +148,27 @@ def espn_bot(function):
 
     groupme_bot = GroupMe(bot_id)
     slack_bot = Slack(slack_webhook_url)
-    discord_bot = Discord(discord_webhook_url)
+    discord_webhook = Discord(discord_webhook_url)
 
     if swid == '{1}' or espn_s2 == '1':
         league = League(league_id=league_id, year=year)
     else:
         league = League(league_id=league_id, year=year, espn_s2=espn_s2, swid=swid)
+
+    try:
+        discord_server = data['discord_server_id']
+    except KeyError:
+        discord_server = None
+
+    discord_token = data['discord_token']
+    if discord_token is not None:
+        intents = discord.Intents.default()
+        intents.message_content = True
+        bot = commands.Bot(command_prefix='$/%', intents=intents)
+        cog = FantasyFootballCog(bot, league, discord_server)
+        asyncio.run(bot.add_cog(cog))
+        bot.run(discord_token)
+
 
     try:
         broadcast_message = data['broadcast_message']
@@ -218,7 +240,7 @@ def espn_bot(function):
         for message in messages:
             groupme_bot.send_message(message)
             slack_bot.send_message(message)
-            discord_bot.send_message(message)
+            discord_webhook.send_message(message)
 
 
 if __name__ == '__main__':

@@ -133,4 +133,19 @@ def get_env_vars():
         # do nothing here, empty init message
         pass
 
+    try:
+        discord_token = os.environ["DISCORD_TOKEN"]
+    except KeyError:
+        discord_token = None
+
+    data['discord_token'] = discord_token
+
+    try:
+        discord_server_id = os.environ["DISCORD_SERVER_ID"]
+    except KeyError:
+        discord_server_id = None
+
+    data['discord_server_id'] = discord_server_id
+
+
     return data

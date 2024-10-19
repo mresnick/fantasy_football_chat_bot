@@ -972,7 +972,7 @@ def get_cmc_still_injured(league):
     cmc = league.player_info(name = "Christian McCaffrey")
     if cmc.injuryStatus in ('INJURY_RESERVE', 'OUT'):
         answer = "Yes!"
-    elif cmc.injuryStatus in('QUESTIONABLE'):
+    elif cmc.injuryStatus in('QUESTIONABLE', 'DOUBTFUL'):
         answer = "Probably!"
     else:
         answer = "NO!!!!!!!!!!!! (but check the bot for bugs)"
