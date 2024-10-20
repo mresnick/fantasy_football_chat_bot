@@ -44,6 +44,10 @@ class FantasyFootballCog(commands.Cog):
     async def power_rankings(self, interaction):
         await interaction.response.send_message(self.codeblock(espn.get_power_rankings(self.league)))
 
+    @app_commands.command(description="Get injury status of a player.")
+    async def player_status(self, interaction, player_name: str):
+        await interaction.response.send_message(self.codeblock(player_name + " is " + espn.get_player_status(self.league, player_name)))
+        
     @app_commands.command(description="Is CMC still injured?")
     async def cmc(self, interaction):
         await interaction.response.send_message(self.codeblock(espn.get_cmc_still_injured(self.league)))

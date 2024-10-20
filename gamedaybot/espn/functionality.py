@@ -967,12 +967,17 @@ def get_trophies(league, week=None, recap=False):
         get_lucky_trophy(league, week) + get_achievers_trophy(league, week) + optimal_team_scores(league, week) + get_most_active_and_laziest(league, week)
     return '\n'.join(text)
 
+def get_player_status(league, player_name):
+    player = league.player_info(name = player_name)
+    if player is None:
+        return "not found in the league"
+    return player.injuryStatus
 
 def get_cmc_still_injured(league):
-    cmc = league.player_info(name = "Christian McCaffrey")
-    if cmc.injuryStatus in ('INJURY_RESERVE', 'OUT'):
+    injuryStatus = get_player_status(league, "Christian McCaffrey")
+    if injuryStatus in ('INJURY_RESERVE', 'OUT'):
         answer = "Yes!"
-    elif cmc.injuryStatus in('QUESTIONABLE', 'DOUBTFUL'):
+    elif injuryStatus in('QUESTIONABLE', 'DOUBTFUL'):
         answer = "Probably!"
     else:
         answer = "NO!!!!!!!!!!!! (but check the bot for bugs)"
