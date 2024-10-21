@@ -1,6 +1,8 @@
 from datetime import date
 from datetime import datetime
 from datetime import timedelta
+import functools
+import random
 
 
 def get_scoreboard_short(league, week=None):
@@ -285,6 +287,47 @@ def get_close_scores(league, week=None):
     text = ['Projected Close Scores'] + score
     return '\n'.join(text)
 
+@functools.total_ordering
+class OrderedBoxPlayer():
+    order = ['QB', 'RB', 'WR', 'TE', 'RB/WR/TE', 'D/ST', 'K', 'BE', 'IR']
+    def __init__(self, box_player):
+        self.box_player = box_player
+
+    def __lt__(self, other):
+        return self.__class__.order.index(self.box_player.slot_position) < self.__class__.order.index(other.box_player.slot_position)
+
+    def __eq__(self, other):
+        return self.box_player.slot_position == other.box_player.slot_position
+
+def get_lineup(league, team_name, week=None):
+    box_scores = league.box_scores(week=week)
+    lineup = []
+    for i in box_scores:
+        if i.home_team.team_name == team_name:
+            lineup = i.home_lineup
+            break
+        elif i.away_team.team_name == team_name:
+            lineup = i.away_lineup
+            break
+
+    lineup = [OrderedBoxPlayer(p) for p in lineup]
+    lineup.sort()
+
+    for player in lineup:
+        if player.box_player.slot_position == "RB/WR/TE":
+            player.box_player.slot_position = "FLEX"
+
+        if player.box_player.on_bye_week == True:
+            player.box_player.points = "BYE"
+
+        if player.box_player.game_played == 0:
+            player.box_player.points = "N/A"
+
+    title = team_name + " Roster"
+    return title + "\n" + "\n".join([("{:20} - {:4} - " + ("{:>6.2f}" if isinstance(p.box_player.points, float) else "{:>6}")).format(p.box_player.name, p.box_player.slot_position.replace("RB/WR/TE", "FLEX"), p.box_player.points) for p in lineup])
+
+def get_team_names(league):
+    return [t.team_name for t in league.teams]
 
 def get_waiver_report(league, faab=False):
     """

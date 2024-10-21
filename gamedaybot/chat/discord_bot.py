@@ -48,6 +48,15 @@ class FantasyFootballCog(commands.Cog):
     async def player_status(self, interaction, player_name: str):
         await interaction.response.send_message(self.codeblock(player_name + " is " + espn.get_player_status(self.league, player_name)))
         
+    @app_commands.command(description="Get the lineup for a team.")
+    async def lineup(self, interaction, team_name: str):
+        await interaction.response.send_message(self.codeblock(espn.get_lineup(self.league, team_name)))
+
+    @lineup.autocomplete('team_name')
+    async def team_names_autocomplete(self, interaction, current: str):
+        team_names = espn.get_team_names(self.league)
+        return [app_commands.Choice(name=team_name, value=team_name) for team_name in team_names if current.lower() in team_name.lower()]
+
     @app_commands.command(description="Is CMC still injured?")
     async def cmc(self, interaction):
         await interaction.response.send_message(self.codeblock(espn.get_cmc_still_injured(self.league)))
