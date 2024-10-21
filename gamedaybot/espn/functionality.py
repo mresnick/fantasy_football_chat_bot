@@ -50,8 +50,8 @@ def get_projected_scoreboard(league, week=None):
 
     # Gets current week's scoreboard projections
     box_scores = league.box_scores(week=week)
-    score = ['%4s %6.2f - %6.2f %s' % (i.home_team.team_abbrev, get_projected_total(i.home_lineup),
-                                       get_projected_total(i.away_lineup), i.away_team.team_abbrev) for i in box_scores
+    score = ['%4s %6.2f - %6.2f %s' % (i.home_team.team_abbrev, i.home_projected,
+                                       i.away_projected, i.away_team.team_abbrev) for i in box_scores
              if i.away_team]
     text = ['Approximate Projected Scores'] + score
     return '\n'.join(text)
@@ -117,33 +117,6 @@ def top_half_wins(league, top_half_totals, week):
         top_half_totals[team_name] += 1
 
     return top_half_totals
-
-
-def get_projected_total(lineup):
-    """
-    Retrieve the projected total points for a given lineup in a fantasy football league.
-
-    Parameters
-    ----------
-    lineup : list
-        A list of player objects that represents the lineup
-
-    Returns
-    -------
-    float
-        The projected total points for the given lineup.
-    """
-
-    total_projected = 0
-    for i in lineup:
-        # exclude player on bench and injured reserve
-        if i.slot_position != 'BE' and i.slot_position != 'IR':
-            # Check if the player has already played or not
-            if i.points != 0 or i.game_played > 0:
-                total_projected += i.points
-            else:
-                total_projected += i.projected_points
-    return total_projected
 
 
 def all_played(lineup):
@@ -299,8 +272,8 @@ def get_close_scores(league, week=None):
 
     for i in box_scores:
         if i.away_team:
-            away_projected = get_projected_total(i.away_lineup)
-            home_projected = get_projected_total(i.home_lineup)
+            away_projected = i.away_projected
+            home_projected = i.home_projected
             diffScore = away_projected - home_projected
 
             if (abs(diffScore) <= 15 and (not all_played(i.away_lineup) or not all_played(i.home_lineup))):
