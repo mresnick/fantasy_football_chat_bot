@@ -49,8 +49,8 @@ class FantasyFootballCog(commands.Cog):
         await interaction.response.send_message(self.codeblock(player_name + " is " + espn.get_player_status(self.league, player_name)))
         
     @app_commands.command(description="Get the lineup for a team.")
-    async def lineup(self, interaction, team_name: str):
-        await interaction.response.send_message(self.codeblock(espn.get_lineup(self.league, team_name)))
+    async def lineup(self, interaction, team_name: str, week: int = None):
+        await interaction.response.send_message(self.codeblock(espn.get_lineup(self.league, team_name, week)))
 
     @lineup.autocomplete('team_name')
     async def team_names_autocomplete(self, interaction, current: str):
