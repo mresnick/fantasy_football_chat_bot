@@ -325,7 +325,7 @@ def get_lineup(league, team_name, week=None):
 
     title = team_name + " Roster"
     if week != None: title = title + " Week " + str(week)
-    return title + "\n" + "\n".join([("{:20} - {:4} - " + ("{:>6.2f}" if isinstance(p.box_player.points, float) else "{:>6}")).format(p.box_player.name, p.box_player.slot_position.replace("RB/WR/TE", "FLEX"), p.box_player.points) for p in lineup])
+    return title + "\n" + "\n".join([("{:20}" + ("("+p.box_player.injuryStatus[0]+")" if p.box_player.injuryStatus[0] not in ('A','N') else "   ") + " - {:4} - " + ("{:>6.2f}" if isinstance(p.box_player.points, float) else "{:>6}")).format(p.box_player.name, p.box_player.slot_position.replace("RB/WR/TE", "FLEX"), p.box_player.points) for p in lineup])
 
 def get_team_names(league):
     return [t.team_name for t in league.teams]
