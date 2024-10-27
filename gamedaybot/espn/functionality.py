@@ -999,4 +999,4 @@ def get_cmc_still_injured(league):
     else:
         answer = "NO!!!!!!!!!!!! (but check the bot for bugs)"
 
-    return "\n".join(["Daily Report: Is CMC still injured?", answer])
+    return "\n".join(["Is CMC still injured?", answer])
