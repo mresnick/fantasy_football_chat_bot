@@ -15,7 +15,7 @@ def get_env_vars():
     try:
         ff_end_date = os.environ["END_DATE"]
     except KeyError:
-        ff_end_date = '2025-01-05'
+        ff_end_date = '2024-12-31'
 
     data['ff_end_date'] = ff_end_date
 
