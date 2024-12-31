@@ -1,6 +1,6 @@
 flake8==3.3.0
 apscheduler>=3.3.0,<4.0.0
 requests>=2.0.0,<3.0.0
-espn_api>=0.38.1
+espn_api>=0.43.0
 datetime
 discord>=2.3.2
