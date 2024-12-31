@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 import gamedaybot.espn.functionality as espn
+import gamedaybot.espn.season_recap as recap
 from espn_api.football import League
 import logging
 
@@ -51,6 +52,14 @@ class FantasyFootballCog(commands.Cog):
     @app_commands.command(description="Get the lineup for a team.")
     async def lineup(self, interaction, team_name: str, week: int = None):
         await interaction.response.send_message(self.codeblock(espn.get_lineup(self.league, team_name, week)))
+
+    @app_commands.command(description="Get season recap.")
+    async def recap(self, interaction):
+        await interaction.response.send_message(self.codeblock(recap.trophy_recap(self.league)))
+
+    @app_commands.command(description="Get season win matrix.")
+    async def win_matrix(self, interaction):
+        await interaction.response.send_message(self.codeblock(recap.win_matrix(self.league)))
 
     @lineup.autocomplete('team_name')
     async def team_names_autocomplete(self, interaction, current: str):
