@@ -7,19 +7,19 @@ services:
     restart: always
     environment:
       #Bot ID from the GroupMe developers page (REQUIRED IF USING GROUPME)
-      # BOT_ID: "1"
+      # BOT_ID: "YOUR_BOT_ID_HERE"
       #Webhook URL from the Slack App page (REQUIRED IF USING SLACK)
-      #SLACK_WEBHOOK_URL: "1"
+      #SLACK_WEBHOOK_URL: "YOUR_SLACK_WEBHOOK_URL_HERE"
       #This is your Webhook URL from the Discord Settings page (REQUIRED IF USING DISCORD)
-      DISCORD_WEBHOOK_URL: "https://discord.com/api/webhooks/1295887248624975923/0tr1z6DAe-_4oLE9vE6Nax0_-BY7exo-ivGiXf4eOgLgShvU43ekn-PlPP2iNdh0mVa-"
+      DISCORD_WEBHOOK_URL: "YOUR_DISCORD_WEBHOOK_URL_HERE"
       #ESPN league id (REQUIRED)
-      LEAGUE_ID: "1884046302"
+      LEAGUE_ID: "YOUR_LEAGUE_ID_HERE"
       # #When the bot will start paying attention and sending messages to your chat.
-      # START_DATE: 
+      # START_DATE:
       # #When the bot will stop paying attention and stop sending messages to your chat.
       # END_DATE:
       # #ESPN League year
-      LEAGUE_YEAR: "2024"
+      LEAGUE_YEAR: "2025"
       # #The timezone that the messages will look to send in. (America/New_York by default)
       # TIMEZONE:
       #The message that the bot will say when it is started (can be blank for no message)
@@ -29,6 +29,8 @@ services:
       # #If set to True, when matchups are posted on Tuesday it will also include a random phrase
       # RANDOM_PHRASE:
       #Used for private leagues. See Private Leagues Section for documentation
-      ESPN_S2: "AEBWhY58nr0HcBr6YpxDn7EQ7RFo1G9s1Rst2X4SdTMMv9Hpr3pBXfbROYVFL6DoVpM6GPdct19SoTrcHOWpTldNaHA65f9YDW9rJO7oM9ZZNjrwdN3vCERr1kumYasnhwFlBMgCjJUQ8dxKTHvOfATM201iZSgt+us7nC6dLySsSSCRNrB5AAZ26ZNgvmIj3ejSLD/Qw2Vv+rmdNdi2BHXnHA3fNVR2zLf2cuK8Kpsq2e64l4J9TN1AGATEHrV5KZbAQFpXjfY0CMkxu9BjOKyTExIdh/DpGkLA1YiZcFqEKmyhQkY2FTFpKA+USPF00rO3/BxQaAMnzESWUi3EE1ja"
+      ESPN_S2: "YOUR_ESPN_S2_TOKEN_HERE"
       #Used for private leagues. See Private Leagues Section for documentation
-      SWID: "FA6E5CC1-EB95-46EF-94E6-31D5E863F696"
+      SWID: "YOUR_SWID_HERE"
+      DISCORD_TOKEN: "YOUR_DISCORD_BOT_TOKEN_HERE"
+      DISCORD_SERVER_ID: "YOUR_DISCORD_SERVER_ID_HERE"

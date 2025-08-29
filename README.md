@@ -6,6 +6,10 @@ For troubleshooting and release notifications, join the discord!
 
 [![Discord Banner 2](https://discordapp.com/api/guilds/878995504225218620/widget.png?style=banner2)](https://discord.gg/VFXSkcgjxh)
 
+---
+**Note: This is a fork of [dtcarls/fantasy_football_chat_bot](https://github.com/dtcarls/fantasy_football_chat_bot)**
+---
+
 Like the bot? Star the repository and consider making a donation to buy me a coffee
 ------
 * PayPal:

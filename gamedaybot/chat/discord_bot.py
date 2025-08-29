@@ -55,11 +55,13 @@ class FantasyFootballCog(commands.Cog):
 
     @app_commands.command(description="Get season recap.")
     async def recap(self, interaction):
-        await interaction.response.send_message(self.codeblock(recap.trophy_recap(self.league)))
+        interaction.response.defer()
+        await interaction.followup.send_message(self.codeblock(recap.trophy_recap(self.league)))
 
     @app_commands.command(description="Get season win matrix.")
     async def win_matrix(self, interaction):
-        await interaction.response.send_message(self.codeblock(recap.win_matrix(self.league)))
+        interaction.response.defer()
+        await interaction.followup.send_message(self.codeblock(recap.win_matrix(self.league)))
 
     @lineup.autocomplete('team_name')
     async def team_names_autocomplete(self, interaction, current: str):

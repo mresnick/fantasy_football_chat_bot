@@ -132,6 +132,8 @@ dmypy.json
 
 #misc.
 .vscode/*
+.vs/
+docker-compose.local.yml
 
 gamedaybot/ids.txt
 *.sh
