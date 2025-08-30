@@ -225,6 +225,12 @@ def espn_bot(function):
         except KeyError:
             # do nothing here, empty broadcast message
             pass
+    elif function == "get_draft_reminder":
+        draft_date = data.get('draft_date')
+        if draft_date:
+            text = espn.get_draft_reminder(league, draft_date)
+        else:
+            text = "Draft reminders are disabled. Please set DRAFT_DATE environment variable to enable daily draft reminders."
     elif function == "init":
         try:
             text = data["init_msg"]
@@ -239,9 +245,10 @@ def espn_bot(function):
         logger.debug(text)
         messages = util.str_limit_check(text, str_limit)
         for message in messages:
-            groupme_bot.send_message(message)
-            slack_bot.send_message(message)
-            discord_webhook.send_message(message)
+            if message.strip():  # Only send non-empty messages
+                groupme_bot.send_message(message)
+                slack_bot.send_message(message)
+                discord_webhook.send_message(message)
 
 def start_bot(bot, discord_token):
     bot.run(discord_token)

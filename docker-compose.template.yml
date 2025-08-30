@@ -24,6 +24,8 @@ services:
       # TIMEZONE:
       #The message that the bot will say when it is started (can be blank for no message)
       # INIT_MSG: "test bot up"
+      # #Your draft date in YYYY-MM-DD format to enable daily draft reminders at 9:00 AM
+      # DRAFT_DATE: "2025-09-01"
       # #If set to True, when standings are posted on Wednesday it will also include top half scoring wins
       # TOP_HALF_SCORING:
       # #If set to True, when matchups are posted on Tuesday it will also include a random phrase

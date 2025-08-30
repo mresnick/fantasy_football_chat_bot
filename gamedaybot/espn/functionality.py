@@ -1000,3 +1000,88 @@ def get_cmc_still_injured(league):
         answer = "NO!!!!!!!!!!!! (but check the bot for bugs)"
 
     return "\n".join(["Is CMC still injured?", answer])
+
+
+def get_draft_reminder(league, draft_date=None):
+    """
+    Generate a draft reminder message using ESPN API data or fallback to provided date.
+    
+    Parameters
+    ----------
+    league : object
+        The league object containing league information
+    draft_date : str, optional
+        The draft date in format 'YYYY-MM-DD' (fallback if ESPN API doesn't have date)
+    
+    Returns
+    -------
+    str
+        A formatted draft reminder message
+    """
+    from datetime import datetime, date
+    
+    try:
+        # First, try to get draft information from ESPN API
+        league.refresh_draft()
+        
+        # Check if draft has already happened
+        if hasattr(league, 'espn_request'):
+            try:
+                draft_data = league.espn_request.get_league_draft()
+                draft_detail = draft_data.get('draftDetail', {})
+                
+                # If draft is completed, show draft results
+                if draft_detail.get('drafted', False):
+                    if hasattr(league, 'draft') and league.draft:
+                        total_picks = len(league.draft)
+                        teams = league.settings.team_count if hasattr(league.settings, 'team_count') else len(set([pick.team for pick in league.draft]))
+                        rounds = total_picks // teams if teams > 0 else 0
+                        
+                        return f"✅ DRAFT COMPLETED! ✅\n" \
+                               f"Your {league.settings.name if hasattr(league.settings, 'name') else 'league'} " \
+                               f"completed their {rounds}-round draft with {total_picks} total picks!\n" \
+                               f"Good luck this season!"
+                    else:
+                        return "✅ DRAFT COMPLETED! ✅\nYour draft has been completed. Good luck this season!"
+                
+                # If draft is in progress
+                elif draft_detail.get('inProgress', False):
+                    return "🔴 DRAFT IN PROGRESS! 🔴\nYour draft is currently happening! Get in there!"
+                
+            except Exception as e:
+                # ESPN API call failed, fall back to manual date if provided
+                pass
+        
+        # Fallback to manual draft date if provided
+        if draft_date:
+            try:
+                draft_datetime = datetime.strptime(draft_date, '%Y-%m-%d').date()
+                today = date.today()
+                days_until_draft = (draft_datetime - today).days
+                
+                if days_until_draft < 0:
+                    return ""  # Don't send any message after draft date passes
+                elif days_until_draft == 0:
+                    return "🏈 DRAFT DAY IS TODAY! 🏈\nGet ready to draft your championship team!"
+                elif days_until_draft == 1:
+                    return "🔥 DRAFT IS TOMORROW! 🔥\nFinal preparations time - do your research!"
+                elif days_until_draft <= 7:
+                    return f"⏰ DRAFT REMINDER ⏰\n{days_until_draft} days until the draft!\nTime to start your research and rankings!"
+                else:
+                    return f"📅 DRAFT REMINDER 📅\n{days_until_draft} days until the draft on {draft_date}!\nStart planning your strategy!"
+            except ValueError:
+                return "Invalid draft date format. Please use YYYY-MM-DD format."
+        
+        # No draft info available - check if we're in pre-season
+        if league.current_week == 0:
+            return "📋 DRAFT REMINDER 📋\n" \
+                   "Your league is in pre-season! Draft hasn't been scheduled yet.\n" \
+                   "Check your ESPN league settings to schedule your draft."
+        else:
+            return "📋 DRAFT STATUS UNKNOWN 📋\n" \
+                   "Unable to determine draft schedule from ESPN.\n" \
+                   "Please check your league settings or set DRAFT_DATE environment variable."
+        
+    except Exception as e:
+        return f"Error getting draft information: {str(e)}\n" \
+               "Please check your league configuration."

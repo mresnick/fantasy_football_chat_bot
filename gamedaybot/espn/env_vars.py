@@ -147,5 +147,11 @@ def get_env_vars():
 
     data['discord_server_id'] = discord_server_id
 
+    try:
+        draft_date = os.environ["DRAFT_DATE"]
+    except KeyError:
+        draft_date = None
+
+    data['draft_date'] = draft_date
 
     return data

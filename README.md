@@ -27,6 +27,7 @@ This repository runs a GroupMe, Discord, or Slack chat bot to send ESPN Fantasy 
 
 Schedule Link: https://www.gamedaybot.com/message-schedule/
 - Sends out the following messages on this schedule:
+- Draft Reminders - Daily - 9:00 local time (Daily countdown reminders leading up to your draft date - requires DRAFT_DATE to be set)
 - Close Scores - Mon - 18:30 east coast time (Games that are within 16 points of eachother to keep an eye on during the Monday night game)
 - Scoreboard - Mon,Tue,Fri - 7:30 local time (Current ESPN fantasy scoreboard)
 - Trophies - Tue - 7:30 local time (High score, low score, biggest win, closest win)
@@ -37,6 +38,15 @@ Schedule Link: https://www.gamedaybot.com/message-schedule/
 - Players to Monitor report - Sun - 7:30 local time (Players in starting lineup that are Questionable, Doubtful, or Out)
 - Scoreboard - Sun - 16:00, 20:00 east coast time (Current ESPN fantasy scoreboard)
 
+**Draft Reminders Feature:**
+The bot includes intelligent draft reminders that provide different messages based on how close your draft date is:
+- 10+ days before: General planning reminder to start thinking about your strategy
+- 2-7 days before: Research reminder to start looking at rankings and player news
+- 1 day before: Final preparation reminder to finalize your draft strategy
+- Draft day: Excitement message to get you pumped for the draft
+- After draft: Acknowledges that the draft has passed
+
+To enable draft reminders, simply set the `DRAFT_DATE` environment variable to your draft date in YYYY-MM-DD format.
 
 Table of Contents
 =================
@@ -232,6 +242,7 @@ pip install -r requirements.txt
 |END_DATE|Date|Yes|End of current season (YYYY-MM-DD)|This is when the bot will stop paying attention and stop sending messages to your chat.|
 |LEAGUE_YEAR|String|Yes|Currernt Year (YYYY)|ESPN League year to look at|
 |TIMEZONE|String|Yes|America/New_York|The timezone that the messages will look to send in.|
+|DRAFT_DATE|Date|No|None|Your league's draft date (YYYY-MM-DD). When set, enables daily draft reminder messages at 9:00 AM in your timezone.|
 |INIT_MSG|String|No|None|The message that the bot will say when it is started.|
 |TOP_HALF_SCORING|Bool|No|False|If set to True, when standings are posted on Wednesday it will also include being in the top half of your league for points and you receive an additional "win" for it.|
 |RANDOM_PHRASE|Bool|No|False|If set to True, when matchups are posted on Tuesday it will also include a random phrase|

@@ -75,5 +75,10 @@ def scheduler():
     #               end_date=ff_end_date, timezone=my_timezone, replace_existing=True)
     
 
+    # Draft reminder: daily at 9:00am local time, only if DRAFT_DATE is configured
+    if data.get('draft_date'):
+        sched.add_job(espn_bot, 'cron', ['get_draft_reminder'], id='draft_reminder',
+                      hour=9, minute=0, timezone=my_timezone, replace_existing=True)
+
     print("Ready!")
     sched.start()
