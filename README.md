@@ -10,14 +10,6 @@ For troubleshooting and release notifications, join the discord!
 **Note: This is a fork of [dtcarls/fantasy_football_chat_bot](https://github.com/dtcarls/fantasy_football_chat_bot)**
 ---
 
-Like the bot? Star the repository and consider making a donation to buy me a coffee
-------
-* PayPal:
-[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=ZDLFECJVGG6RG&currency_code=USD&source=url)
-* BTC: bc1q3wxm269mdmwdqjqkxgt7s5zp8ah05dexdua0zv
-* ETH: 0x8c096710e3621fe5f8E384efBd17D8E3E798Dc0c (Cryptik.eth)
-* DOGE: D6n2g2KGdqEwR4MhhT7uAdvZFaTwqwd6rS
-* Venmo: @dtcarls
 
 # ESPN Fantasy Football GroupMe Slack and Discord Chat Bot
 
@@ -25,7 +17,6 @@ This repository runs a GroupMe, Discord, or Slack chat bot to send ESPN Fantasy 
 
 **What does this do?**
 
-Schedule Link: https://www.gamedaybot.com/message-schedule/
 - Sends out the following messages on this schedule:
 - Draft Reminders - Daily - 9:00 local time (Daily countdown reminders leading up to your draft date - requires DRAFT_DATE to be set)
 - Close Scores - Mon - 18:30 east coast time (Games that are within 15.99 points of each other to keep an eye on during the Monday night game)
@@ -51,11 +42,10 @@ To enable draft reminders, simply set the `DRAFT_DATE` environment variable to y
 Table of Contents
 =================
 
-  * [Setting up GroupMe, Discord, or Slack, and deploying app in Heroku](#setting-up-groupme-discord-or-slack-and-deploying-app-in-heroku)
+  * [Setting up GroupMe, Discord, or Slack](#setting-up-groupme-discord-or-slack)
      * [GroupMe Setup](#groupme-setup)
      * [Slack setup](#slack-setup)
      * [Discord setup](#discord-setup)
-     * [Heroku setup](#heroku-setup)
      * [Private Leagues](#private-leagues)
   * [Troubleshooting / FAQ](#troubleshooting--faq)
   * [Getting Started for development and testing](#getting-started-for-development-and-testing)
@@ -65,12 +55,7 @@ Table of Contents
      * [Running without Docker](#running-without-docker)
      * [Running the tests](#running-the-tests)
 
-:cold_sweat::cold_sweat::cold_sweat:
-
-**All of this look too complicated and confusing? Don't know what a "Heroku" is? Consider checking out https://www.GameDayBot.com/ where I offer a hosting service and do my best to minimize complexity.**
-
-:cold_sweat::cold_sweat::cold_sweat:
-## Setting up GroupMe, Discord, or Slack, and deploying app in Heroku
+## Setting up GroupMe, Discord, or Slack
 
 **Do not deploy 2 of the same bot in the same chat. In general, you should let your commissioner do the setup**
 
@@ -167,43 +152,6 @@ Save the "Webhook URL" on this page
 If you want to use Discord slash commands, you'll need to create a Discord application and bot. Set the `DISCORD_TOKEN` and `DISCORD_SERVER_ID` environment variables in addition to or instead of `DISCORD_WEBHOOK_URL`.
 </details>
 
-### Heroku setup
-**"November 28, 2022, Heroku stopped offering free product plans"**
-
-I offer a hosting service far lower than the new costs of Heroku at https://www.GameDayBot.com/
-<details>
-  <summary>Click to expand!</summary>
-Heroku is what you can use to host the chat bot.
-
-Go to https://id.heroku.com/login and sign up or login
-
-
-:warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning:
-
-:rotating_light:**Click this purple button to automatically deploy the code:**:rotating_light:
-
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
-
-:warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning:
-
-Go to your dashboard (https://dashboard.heroku.com/apps)
-Now you will need to setup your environment variables so that it works for your league. Click Settings at your dashboard. Then click "Reveal Config Vars" button and you will see something like this.
-
-![](https://i.imgur.com/7a1V6v8.png)
-
-Now we will need to edit these variables (click the pencil to the right of the variable to modify)
-Note: App will restart when you change any variable so your chat room may be semi-spammed with the init message of "Hi" you can change the INIT_MSG variable to be blank to have no init message. It should also be noted that Heroku seems to restart the app about once a day
-
-See [Environment Variables Section](#environment-variables) for documentation
-
-After you have setup your variables you will need to turn it on. Navigate to the "Resources" tab of your Heroku app Dashboard.
-You should see something like below. Click the pencil on the right and toggle the buton so it is blue like depicted and click "Confirm."
-![](https://i.imgur.com/J6bpV2I.png)
-
-You're done! You now have a fully featured GroupMe/Slack/Discord chat bot for ESPN leagues! If you have an INIT_MSG you will see it exclaimed in your GroupMe, Discord, or Slack chat room.
-
-Unfortunately to do auto deploys of the latest version you need admin access to the repository on git. You can check for updates on the github page (https://github.com/dtcarls/fantasy_football_chat_bot/commits/master) and click the deploy button again; however, this will deploy a new instance and the variables will need to be edited again.
-</details>
 
 ## Getting Started for development and testing
 
