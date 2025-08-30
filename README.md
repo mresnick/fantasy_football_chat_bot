@@ -1,16 +1,3 @@
-[![GitHub release](https://img.shields.io/github/v/release/dtcarls/fantasy_football_chat_bot)](https://github.com/dtcarls/fantasy_football_chat_bot/releases/latest/)
-![Test workflow](https://github.com/dtcarls/fantasy_football_chat_bot/actions/workflows/ci.yaml/badge.svg)
-![Publish workflow](https://github.com/dtcarls/fantasy_football_chat_bot/actions/workflows/publish_image.yaml/badge.svg)
-
-For troubleshooting and release notifications, join the discord!
-
-[![Discord Banner 2](https://discordapp.com/api/guilds/878995504225218620/widget.png?style=banner2)](https://discord.gg/VFXSkcgjxh)
-
----
-**Note: This is a fork of [dtcarls/fantasy_football_chat_bot](https://github.com/dtcarls/fantasy_football_chat_bot)**
----
-
-
 # ESPN Fantasy Football GroupMe Slack and Discord Chat Bot
 
 This repository runs a GroupMe, Discord, or Slack chat bot to send ESPN Fantasy Football information to a GroupMe, Discord or Slack chat room.
@@ -304,3 +291,7 @@ If you set up the Discord bot with a `DISCORD_TOKEN`, you get access to these sl
 - `/cmc` - Is CMC still injured?
 
 </details>
+
+---
+**Note: This is a fork of [dtcarls/fantasy_football_chat_bot](https://github.com/dtcarls/fantasy_football_chat_bot)**
+---
