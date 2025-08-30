@@ -28,14 +28,14 @@ This repository runs a GroupMe, Discord, or Slack chat bot to send ESPN Fantasy 
 Schedule Link: https://www.gamedaybot.com/message-schedule/
 - Sends out the following messages on this schedule:
 - Draft Reminders - Daily - 9:00 local time (Daily countdown reminders leading up to your draft date - requires DRAFT_DATE to be set)
-- Close Scores - Mon - 18:30 east coast time (Games that are within 16 points of eachother to keep an eye on during the Monday night game)
-- Scoreboard - Mon,Tue,Fri - 7:30 local time (Current ESPN fantasy scoreboard)
-- Trophies - Tue - 7:30 local time (High score, low score, biggest win, closest win)
+- Close Scores - Mon - 18:30 east coast time (Games that are within 15.99 points of each other to keep an eye on during the Monday night game)
+- Scoreboard - Mon,Fri - 7:30 local time (Current ESPN fantasy scoreboard)
+- Final Results & Trophies - Tue - 9:45 local time (Previous week's final scores and trophies)
 - Power rankings - Tue - 18:30 local time
 - Current standings - Wed - 7:30 local time
-- Waiver report - Wed - 7:30 local time
+- Waiver report - Wed - 7:31 local time (optional, requires ESPN_S2 and SWID)
 - Matchups - Thu - 19:30 east coast time (Upcoming matchups)
-- Players to Monitor report - Sun - 7:30 local time (Players in starting lineup that are Questionable, Doubtful, or Out)
+- Players to Monitor report - Thu,Sun,Mon - 7:30 local time (Players in starting lineup that are Questionable, Doubtful, or Out - optional)
 - Scoreboard - Sun - 16:00, 20:00 east coast time (Current ESPN fantasy scoreboard)
 
 **Draft Reminders Feature:**
@@ -146,6 +146,7 @@ Log into or create a discord account
 
 Go to or create a discord server to receive messages in
 
+**For Webhook Setup (basic functionality):**
 Open the server settings
 
 ![](https://i.imgur.com/bDk2ttJ.png)
@@ -161,6 +162,9 @@ Create a webhook, give it a name and pick which channel to receive messages in
 Save the "Webhook URL" on this page
 
 ![](https://i.imgur.com/U4MKZSY.png)
+
+**For Discord Bot Setup (advanced functionality with slash commands):**
+If you want to use Discord slash commands, you'll need to create a Discord application and bot. Set the `DISCORD_TOKEN` and `DISCORD_SERVER_ID` environment variables in addition to or instead of `DISCORD_WEBHOOK_URL`.
 </details>
 
 ### Heroku setup
@@ -237,15 +241,18 @@ pip install -r requirements.txt
 |BOT_ID|String|For GroupMe|None|This is your Bot ID from the GroupMe developers page|
 |SLACK_WEBHOOK_URL|String|For Slack|None|This is your Webhook URL from the Slack App page|
 |DISCORD_WEBHOOK_URL|String|For Discord|None|This is your Webhook URL from the Discord Settings page|
+|DISCORD_TOKEN|String|For Discord Bot|None|Discord bot token for slash command functionality|
+|DISCORD_SERVER_ID|String|For Discord Bot|None|Discord server ID for slash commands (optional)|
 |LEAGUE_ID|String|Yes|None|This is your ESPN league id|
 |START_DATE|Date|Yes|Start of current season (YYYY-MM-DD)|This is when the bot will start paying attention and sending messages to your chat.|
 |END_DATE|Date|Yes|End of current season (YYYY-MM-DD)|This is when the bot will stop paying attention and stop sending messages to your chat.|
-|LEAGUE_YEAR|String|Yes|Currernt Year (YYYY)|ESPN League year to look at|
+|LEAGUE_YEAR|String|Yes|Current Year (YYYY)|ESPN League year to look at|
 |TIMEZONE|String|Yes|America/New_York|The timezone that the messages will look to send in.|
 |DRAFT_DATE|Date|No|None|Your league's draft date (YYYY-MM-DD). When set, enables daily draft reminder messages at 9:00 AM in your timezone.|
 |INIT_MSG|String|No|None|The message that the bot will say when it is started.|
+|BROADCAST_MESSAGE|String|No|None|Message to broadcast when using the broadcast function|
 |TOP_HALF_SCORING|Bool|No|False|If set to True, when standings are posted on Wednesday it will also include being in the top half of your league for points and you receive an additional "win" for it.|
-|RANDOM_PHRASE|Bool|No|False|If set to True, when matchups are posted on Tuesday it will also include a random phrase|
+|RANDOM_PHRASE|Bool|No|False|If set to True, when matchups are posted on Thursday it will also include a random phrase|
 |MONITOR_REPORT|Bool|No|False|If set to True, will provide a report of players in starting lineup that are Questionable, Doubtful, Out, or projected for less than 4 points|
 |WAIVER_REPORT|Bool|No|False|If set to True, will provide a waiver report of add/drops. :warning: ESPN_S2 and SWID are required for this to work :warning:|
 |DAILY_WAIVER|Bool|No|False|If set to True, will provide a waiver report of add/drops daily. :warning: ESPN_S2 and SWID are required for this to work :warning:|
@@ -329,4 +336,23 @@ My Standings look wrong. I have weird (+1) in it.
 
 * TOP_HALF_SCORING: If set to True, when standings are posted on Wednesday it will also include top half scoring wins
 * Top half wins is being in the top half of your league for points and you receive an additional "win" for it. The number in parenthesis (+1) tells you how many added wins over the season for top half wins.
+
+## Discord Bot Commands
+
+If you set up the Discord bot with a `DISCORD_TOKEN`, you get access to these slash commands:
+
+- `/current_scores` - Get current scores for the week
+- `/scoreboard [week]` - Get the scoreboard for a specific week
+- `/projected_scores` - Get projected scores for the week
+- `/standings` - Get current standings
+- `/players_to_monitor` - Get players to monitor
+- `/matchups` - Get the week's matchups
+- `/close_scores` - Get close projected scores for the week
+- `/power_rankings` - Get power rankings for the week
+- `/player_status [player_name]` - Get injury status of a player
+- `/lineup [team_name] [week]` - Get the lineup for a team
+- `/recap` - Get season recap
+- `/win_matrix` - Get season win matrix
+- `/cmc` - Is CMC still injured?
+
 </details>
