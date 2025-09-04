@@ -1030,8 +1030,25 @@ def get_draft_reminder(league, draft_date=None):
                 draft_data = league.espn_request.get_league_draft()
                 draft_detail = draft_data.get('draftDetail', {})
                 
-                # If draft is completed, show draft results
+                # If draft is completed, only send completion message once (today only)
                 if draft_detail.get('drafted', False):
+                    # Get the draft completion date if available
+                    try:
+                        # Try to get the draft date from the API
+                        draft_timestamp = draft_detail.get('date')
+                        if draft_timestamp:
+                            draft_completion_date = datetime.fromtimestamp(draft_timestamp / 1000).date()
+                            today = date.today()
+                            
+                            # Only send draft completion message on the day it was completed
+                            if draft_completion_date != today:
+                                return ""  # Don't send any message after draft completion day
+                    except (KeyError, ValueError, TypeError):
+                        # If we can't get the draft date, don't send repeated messages
+                        # Check if this is likely the first day after draft (league.current_week == 1)
+                        if league.current_week > 1:
+                            return ""
+                    
                     if hasattr(league, 'draft') and league.draft:
                         total_picks = len(league.draft)
                         teams = league.settings.team_count if hasattr(league.settings, 'team_count') else len(set([pick.team for pick in league.draft]))
@@ -1052,36 +1069,39 @@ def get_draft_reminder(league, draft_date=None):
                 # ESPN API call failed, fall back to manual date if provided
                 pass
         
-        # Fallback to manual draft date if provided
-        if draft_date:
-            try:
-                draft_datetime = datetime.strptime(draft_date, '%Y-%m-%d').date()
-                today = date.today()
-                days_until_draft = (draft_datetime - today).days
-                
-                if days_until_draft < 0:
-                    return ""  # Don't send any message after draft date passes
-                elif days_until_draft == 0:
-                    return "🏈 DRAFT DAY IS TODAY! 🏈\nGet ready to draft your championship team!"
-                elif days_until_draft == 1:
-                    return "🔥 DRAFT IS TOMORROW! 🔥\nFinal preparations time - do your research!"
-                elif days_until_draft <= 7:
-                    return f"⏰ DRAFT REMINDER ⏰\n{days_until_draft} days until the draft!\nTime to start your research and rankings!"
-                else:
-                    return f"📅 DRAFT REMINDER 📅\n{days_until_draft} days until the draft on {draft_date}!\nStart planning your strategy!"
-            except ValueError:
-                return "Invalid draft date format. Please use YYYY-MM-DD format."
-        
-        # No draft info available - check if we're in pre-season
+    except Exception as e:
+        # ESPN API completely failed, fall back to manual date if provided
+        pass
+    
+    # Fallback to manual draft date if provided
+    if draft_date:
+        try:
+            draft_datetime = datetime.strptime(draft_date, '%Y-%m-%d').date()
+            today = date.today()
+            days_until_draft = (draft_datetime - today).days
+            
+            if days_until_draft < -1:
+                return ""  # Don't send any message more than 1 day after draft date passes
+            elif days_until_draft == -1:
+                return "✅ DRAFT COMPLETED! ✅\nYour draft was yesterday. Good luck this season!"
+            elif days_until_draft == 0:
+                return "🏈 DRAFT DAY IS TODAY! 🏈\nGet ready to draft your championship team!"
+            elif days_until_draft == 1:
+                return "🔥 DRAFT IS TOMORROW! 🔥\nFinal preparations time - do your research!"
+            elif days_until_draft <= 7:
+                return f"⏰ DRAFT REMINDER ⏰\n{days_until_draft} days until the draft!\nTime to start your research and rankings!"
+            else:
+                return f"📅 DRAFT REMINDER 📅\n{days_until_draft} days until the draft on {draft_date}!\nStart planning your strategy!"
+        except ValueError:
+            return "Invalid draft date format. Please use YYYY-MM-DD format."
+    
+    # No draft info available - check if we're in pre-season
+    try:
         if league.current_week == 0:
             return "📋 DRAFT REMINDER 📋\n" \
                    "Your league is in pre-season! Draft hasn't been scheduled yet.\n" \
                    "Check your ESPN league settings to schedule your draft."
         else:
-            return "📋 DRAFT STATUS UNKNOWN 📋\n" \
-                   "Unable to determine draft schedule from ESPN.\n" \
-                   "Please check your league settings or set DRAFT_DATE environment variable."
-        
-    except Exception as e:
-        return f"Error getting draft information: {str(e)}\n" \
-               "Please check your league configuration."
+            return ""  # Don't send unknown status messages during the season
+    except Exception:
+        return ""  # If we can't determine anything, don't send a message

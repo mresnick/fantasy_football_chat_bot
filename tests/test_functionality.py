@@ -153,14 +153,15 @@ class TestFunctionality:
         activity = Mock()
         activity.date = int(datetime.now().timestamp() * 1000)  # Today's timestamp in milliseconds
         
-        action = Mock()
-        action[0] = Mock()  # team
-        action[0].team_name = "Team Alpha"
-        action[1] = "WAIVER ADDED"  # action type
-        action[2] = Mock()  # player
-        action[2].name = "New Player"
-        action[2].position = "WR"
-        action[3] = 15  # FAAB amount
+        # Create action as a list instead of trying to assign to Mock indices
+        team_mock = Mock()
+        team_mock.team_name = "Team Alpha"
+        
+        player_mock = Mock()
+        player_mock.name = "New Player"
+        player_mock.position = "WR"
+        
+        action = [team_mock, "WAIVER ADDED", player_mock, 15]
         
         activity.actions = [action]
         activities.append(activity)
@@ -486,6 +487,32 @@ class TestFunctionality:
         
         assert "DRAFT REMINDER" in result
         assert "pre-season" in result
+    
+    def test_get_draft_reminder_completed_no_repeat(self, mock_league):
+        """Test that draft completed messages are not sent repeatedly after completion day"""
+        
+        # Mock a completed draft that happened yesterday
+        yesterday_timestamp = int((datetime(2024, 9, 4).timestamp()) * 1000)
+        mock_league.espn_request.get_league_draft.return_value = {
+            'draftDetail': {
+                'drafted': True,
+                'inProgress': False,
+                'date': yesterday_timestamp
+            }
+        }
+        
+        # Mock league.draft for completion message
+        mock_league.draft = [Mock() for _ in range(120)]  # 120 picks
+        
+        with patch('gamedaybot.espn.functionality.date') as mock_date:
+            mock_date.today.return_value = date(2024, 9, 5)  # Today
+            with patch('gamedaybot.espn.functionality.datetime') as mock_datetime:
+                mock_datetime.fromtimestamp.side_effect = datetime.fromtimestamp
+                
+                result = get_draft_reminder(mock_league)
+                
+                # Should return empty string (no message) since draft was completed yesterday
+                assert result == ""
     
     def test_get_player_status_found(self, mock_league):
         """Test get_player_status for found player"""
