@@ -403,7 +403,7 @@ def get_waiver_report(league, faab=False):
     report.reverse()
 
     if not report:
-        report += ['No waiver transactions']
+        text = ['No waiver transactions']
     else:
         text = ['Waiver Report %s: ' % today] + report
 
@@ -1018,7 +1018,27 @@ def get_draft_reminder(league, draft_date=None):
     str
         A formatted draft reminder message
     """
-    from datetime import datetime, date
+    # Fallback to manual draft date if provided (prioritize this for testing)
+    if draft_date:
+        try:
+            draft_datetime = datetime.strptime(draft_date, '%Y-%m-%d').date()
+            today = date.today()
+            days_until_draft = (draft_datetime - today).days
+            
+            if days_until_draft < -1:
+                return ""  # Don't send any message more than 1 day after draft date passes
+            elif days_until_draft == -1:
+                return "✅ DRAFT COMPLETED! ✅\nYour draft was yesterday. Good luck this season!"
+            elif days_until_draft == 0:
+                return "🏈 DRAFT DAY IS TODAY! 🏈\nGet ready to draft your championship team!"
+            elif days_until_draft == 1:
+                return "🔥 DRAFT IS TOMORROW! 🔥\nFinal preparations time - do your research!"
+            elif days_until_draft <= 7:
+                return f"⏰ DRAFT REMINDER ⏰\n{days_until_draft} days until the draft!\nTime to start your research and rankings!"
+            else:
+                return f"📅 DRAFT REMINDER 📅\n{days_until_draft} days until the draft on {draft_date}!\nStart planning your strategy!"
+        except ValueError:
+            return "Invalid draft date format. Please use YYYY-MM-DD format."
     
     try:
         # First, try to get draft information from ESPN API
@@ -1072,28 +1092,6 @@ def get_draft_reminder(league, draft_date=None):
     except Exception as e:
         # ESPN API completely failed, fall back to manual date if provided
         pass
-    
-    # Fallback to manual draft date if provided
-    if draft_date:
-        try:
-            draft_datetime = datetime.strptime(draft_date, '%Y-%m-%d').date()
-            today = date.today()
-            days_until_draft = (draft_datetime - today).days
-            
-            if days_until_draft < -1:
-                return ""  # Don't send any message more than 1 day after draft date passes
-            elif days_until_draft == -1:
-                return "✅ DRAFT COMPLETED! ✅\nYour draft was yesterday. Good luck this season!"
-            elif days_until_draft == 0:
-                return "🏈 DRAFT DAY IS TODAY! 🏈\nGet ready to draft your championship team!"
-            elif days_until_draft == 1:
-                return "🔥 DRAFT IS TOMORROW! 🔥\nFinal preparations time - do your research!"
-            elif days_until_draft <= 7:
-                return f"⏰ DRAFT REMINDER ⏰\n{days_until_draft} days until the draft!\nTime to start your research and rankings!"
-            else:
-                return f"📅 DRAFT REMINDER 📅\n{days_until_draft} days until the draft on {draft_date}!\nStart planning your strategy!"
-        except ValueError:
-            return "Invalid draft date format. Please use YYYY-MM-DD format."
     
     # No draft info available - check if we're in pre-season
     try:

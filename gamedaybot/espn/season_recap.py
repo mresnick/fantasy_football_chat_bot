@@ -71,7 +71,7 @@ def trophy_recap(league):
         result += icon + ' '
     result += '\n'
     for team_name, trophies in team_trophies.items():
-        result += f"{team_name.ljust(5, ' ')}: {trophies}\n"
+        result += f"{team_name}: {trophies}\n"
     result += '\n'.join(legend)
 
     # Pretty picture
@@ -108,7 +108,7 @@ def win_matrix(league):
             team_record[team.team_abbrev][1] += losses
             losses += 1
 
-    team_record = dict(sorted(team_record.items(), key=lambda item: item[1][0] / item[1][1], reverse=True))
+    team_record = dict(sorted(team_record.items(), key=lambda item: item[1][0] / max(item[1][1], 1), reverse=True))
 
     standings_txt = ["Standings if everyone played every team every week"]
     pos = 1

@@ -21,6 +21,7 @@ class TestFantasyFootballCog:
         # Mock bot
         self.mock_bot = MagicMock(spec=commands.Bot)
         self.mock_bot.tree = MagicMock()
+        self.mock_bot.tree.sync = AsyncMock()
         
         # Mock league with comprehensive data
         self.mock_league = MagicMock(spec=League)
@@ -68,7 +69,7 @@ class TestFantasyFootballCog:
         """Test current_scores command"""
         mock_get_scoreboard.return_value = "Team Alpha: 125.5 vs Team Beta: 110.2"
         
-        await self.cog.current_scores(self.mock_interaction)
+        await self.cog.current_scores.callback(self.cog, self.mock_interaction)
         
         mock_get_scoreboard.assert_called_once_with(self.mock_league)
         self.mock_interaction.response.send_message.assert_called_once()
@@ -86,7 +87,7 @@ class TestFantasyFootballCog:
         week = 3
         mock_get_scoreboard.return_value = "Week 3 scoreboard data"
         
-        await self.cog.scoreboard(self.mock_interaction, week)
+        await self.cog.scoreboard.callback(self.cog, self.mock_interaction, week)
         
         mock_get_scoreboard.assert_called_once_with(self.mock_league, week)
         self.mock_interaction.response.send_message.assert_called_once()
@@ -101,7 +102,7 @@ class TestFantasyFootballCog:
         """Test projected_scores command"""
         mock_get_projected.return_value = "Projected: Team Alpha: 130.0 vs Team Beta: 115.5"
         
-        await self.cog.projected_scores(self.mock_interaction)
+        await self.cog.projected_scores.callback(self.cog, self.mock_interaction)
         
         mock_get_projected.assert_called_once_with(self.mock_league)
         self.mock_interaction.response.send_message.assert_called_once()
@@ -115,7 +116,7 @@ class TestFantasyFootballCog:
         """Test standings command"""
         mock_get_standings.return_value = "1. Team Alpha (3-1)\n2. Team Beta (2-2)"
         
-        await self.cog.standings(self.mock_interaction)
+        await self.cog.standings.callback(self.cog, self.mock_interaction)
         
         mock_get_standings.assert_called_once_with(self.mock_league)
         self.mock_interaction.response.send_message.assert_called_once()
@@ -126,7 +127,7 @@ class TestFantasyFootballCog:
         """Test players_to_monitor command"""
         mock_get_monitor.return_value = "Players to monitor: Player A (Questionable), Player B (Doubtful)"
         
-        await self.cog.players_to_monitor(self.mock_interaction)
+        await self.cog.players_to_monitor.callback(self.cog, self.mock_interaction)
         
         mock_get_monitor.assert_called_once_with(self.mock_league)
         self.mock_interaction.response.send_message.assert_called_once()
@@ -137,7 +138,7 @@ class TestFantasyFootballCog:
         """Test matchups command"""
         mock_get_matchups.return_value = "Week 5 Matchups:\nTeam Alpha vs Team Beta"
         
-        await self.cog.matchups(self.mock_interaction)
+        await self.cog.matchups.callback(self.cog, self.mock_interaction)
         
         mock_get_matchups.assert_called_once_with(self.mock_league)
         self.mock_interaction.response.send_message.assert_called_once()
@@ -148,7 +149,7 @@ class TestFantasyFootballCog:
         """Test close_scores command"""
         mock_get_close.return_value = "Close matchups: Team Alpha (125.5) vs Team Beta (123.2)"
         
-        await self.cog.close_scores(self.mock_interaction)
+        await self.cog.close_scores.callback(self.cog, self.mock_interaction)
         
         mock_get_close.assert_called_once_with(self.mock_league)
         self.mock_interaction.response.send_message.assert_called_once()
@@ -159,7 +160,7 @@ class TestFantasyFootballCog:
         """Test power_rankings command"""
         mock_get_power.return_value = "Power Rankings:\n1. Team Alpha\n2. Team Beta"
         
-        await self.cog.power_rankings(self.mock_interaction)
+        await self.cog.power_rankings.callback(self.cog, self.mock_interaction)
         
         mock_get_power.assert_called_once_with(self.mock_league)
         self.mock_interaction.response.send_message.assert_called_once()
@@ -172,7 +173,7 @@ class TestFantasyFootballCog:
         status = "Active"
         mock_get_status.return_value = status
         
-        await self.cog.player_status(self.mock_interaction, player_name)
+        await self.cog.player_status.callback(self.cog, self.mock_interaction, player_name)
         
         mock_get_status.assert_called_once_with(self.mock_league, player_name)
         self.mock_interaction.response.send_message.assert_called_once()
@@ -188,7 +189,7 @@ class TestFantasyFootballCog:
         team_name = "Team Alpha"
         mock_get_lineup.return_value = "Team Alpha Lineup:\nQB: Player1\nRB: Player2"
         
-        await self.cog.lineup(self.mock_interaction, team_name)
+        await self.cog.lineup.callback(self.cog, self.mock_interaction, team_name)
         
         mock_get_lineup.assert_called_once_with(self.mock_league, team_name, None)
         self.mock_interaction.response.send_message.assert_called_once()
@@ -201,7 +202,7 @@ class TestFantasyFootballCog:
         week = 4
         mock_get_lineup.return_value = "Team Alpha Week 4 Lineup:\nQB: Player1\nRB: Player2"
         
-        await self.cog.lineup(self.mock_interaction, team_name, week)
+        await self.cog.lineup.callback(self.cog, self.mock_interaction, team_name, week)
         
         mock_get_lineup.assert_called_once_with(self.mock_league, team_name, week)
         self.mock_interaction.response.send_message.assert_called_once()
@@ -212,7 +213,7 @@ class TestFantasyFootballCog:
         """Test recap command"""
         mock_trophy_recap.return_value = "Season Recap:\nChampion: Team Alpha\nMost Points: Team Beta"
         
-        await self.cog.recap(self.mock_interaction)
+        await self.cog.recap.callback(self.cog, self.mock_interaction)
         
         mock_trophy_recap.assert_called_once_with(self.mock_league)
         # Note: recap uses defer() then followup.send_message()
@@ -225,7 +226,7 @@ class TestFantasyFootballCog:
         """Test win_matrix command"""
         mock_win_matrix.return_value = "Win Matrix:\n    A B\nA   - W\nB   L -"
         
-        await self.cog.win_matrix(self.mock_interaction)
+        await self.cog.win_matrix.callback(self.cog, self.mock_interaction)
         
         mock_win_matrix.assert_called_once_with(self.mock_league)
         # Note: win_matrix uses defer() then followup.send_message()
@@ -277,7 +278,7 @@ class TestFantasyFootballCog:
         """Test cmc command"""
         mock_get_cmc.return_value = "CMC Status: Active and healthy!"
         
-        await self.cog.cmc(self.mock_interaction)
+        await self.cog.cmc.callback(self.cog, self.mock_interaction)
         
         mock_get_cmc.assert_called_once_with(self.mock_league)
         self.mock_interaction.response.send_message.assert_called_once()
@@ -320,7 +321,7 @@ class TestFantasyFootballCog:
         
         # The exception should propagate up to Discord's error handler
         with pytest.raises(Exception, match="ESPN API Error"):
-            await self.cog.current_scores(self.mock_interaction)
+            await self.cog.current_scores.callback(self.cog, self.mock_interaction)
 
     @pytest.mark.asyncio
     async def test_interaction_response_called_once(self):
@@ -328,7 +329,7 @@ class TestFantasyFootballCog:
         with patch('gamedaybot.espn.functionality.get_standings') as mock_standings:
             mock_standings.return_value = "Test standings"
             
-            await self.cog.standings(self.mock_interaction)
+            await self.cog.standings.callback(self.cog, self.mock_interaction)
             
             # Ensure response is sent exactly once
             assert self.mock_interaction.response.send_message.call_count == 1
@@ -347,7 +348,7 @@ class TestFantasyFootballCog:
         with patch('gamedaybot.espn.season_recap.trophy_recap') as mock_recap:
             mock_recap.return_value = "Test recap"
             
-            await self.cog.recap(self.mock_interaction)
+            await self.cog.recap.callback(self.cog, self.mock_interaction)
             
             # Verify defer was called before followup
             self.mock_interaction.response.defer.assert_called_once()
@@ -379,7 +380,7 @@ class TestFantasyFootballCog:
         team_name = "Team O'Malley & Sons"
         mock_get_lineup.return_value = "Lineup for Team O'Malley & Sons"
         
-        await self.cog.lineup(self.mock_interaction, team_name)
+        await self.cog.lineup.callback(self.cog, self.mock_interaction, team_name)
         
         mock_get_lineup.assert_called_once_with(self.mock_league, team_name, None)
         self.mock_interaction.response.send_message.assert_called_once()
@@ -392,7 +393,7 @@ class TestFantasyFootballCog:
         status = "Active"
         mock_get_status.return_value = status
         
-        await self.cog.player_status(self.mock_interaction, player_name)
+        await self.cog.player_status.callback(self.cog, self.mock_interaction, player_name)
         
         mock_get_status.assert_called_once_with(self.mock_league, player_name)
         call_args = self.mock_interaction.response.send_message.call_args[0][0]
