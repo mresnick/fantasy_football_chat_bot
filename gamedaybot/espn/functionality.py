@@ -1018,6 +1018,9 @@ def get_draft_reminder(league, draft_date=None):
     str
         A formatted draft reminder message
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"get_draft_reminder called with draft_date={draft_date}")
     # Fallback to manual draft date if provided (prioritize this for testing)
     if draft_date:
         try:
@@ -1026,16 +1029,22 @@ def get_draft_reminder(league, draft_date=None):
             days_until_draft = (draft_datetime - today).days
             
             if days_until_draft < -1:
+                logger.info(f"Draft was {abs(days_until_draft)} days ago - not sending any message")
                 return ""  # Don't send any message more than 1 day after draft date passes
             elif days_until_draft == -1:
+                logger.info("Draft was yesterday - sending completion message")
                 return "✅ DRAFT COMPLETED! ✅\nYour draft was yesterday. Good luck this season!"
             elif days_until_draft == 0:
+                logger.info("Draft is today - sending draft day message")
                 return "🏈 DRAFT DAY IS TODAY! 🏈\nGet ready to draft your championship team!"
             elif days_until_draft == 1:
+                logger.info("Draft is tomorrow - sending tomorrow message")
                 return "🔥 DRAFT IS TOMORROW! 🔥\nFinal preparations time - do your research!"
             elif days_until_draft <= 7:
+                logger.info(f"Draft is {days_until_draft} days away - sending weekly reminder")
                 return f"⏰ DRAFT REMINDER ⏰\n{days_until_draft} days until the draft!\nTime to start your research and rankings!"
             else:
+                logger.info(f"Draft is {days_until_draft} days away - sending general reminder")
                 return f"📅 DRAFT REMINDER 📅\n{days_until_draft} days until the draft on {draft_date}!\nStart planning your strategy!"
         except ValueError:
             return "Invalid draft date format. Please use YYYY-MM-DD format."
@@ -1052,21 +1061,38 @@ def get_draft_reminder(league, draft_date=None):
                 
                 # If draft is completed, only send completion message once (today only)
                 if draft_detail.get('drafted', False):
+                    logger.info("Draft is completed according to ESPN API")
                     # Get the draft completion date if available
                     try:
                         # Try to get the draft date from the API
                         draft_timestamp = draft_detail.get('date')
+                        logger.info(f"Draft timestamp from API: {draft_timestamp}")
                         if draft_timestamp:
                             draft_completion_date = datetime.fromtimestamp(draft_timestamp / 1000).date()
                             today = date.today()
+                            logger.info(f"Draft completion date: {draft_completion_date}, Today: {today}")
                             
-                            # Only send draft completion message on the day it was completed
-                            if draft_completion_date != today:
-                                return ""  # Don't send any message after draft completion day
-                    except (KeyError, ValueError, TypeError):
+                            # Send completion message only the day after draft completion
+                            days_since_draft = (today - draft_completion_date).days
+                            logger.info(f"Days since draft completion: {days_since_draft}")
+                            
+                            if days_since_draft > 1:
+                                logger.info("More than 1 day since draft - returning empty string")
+                                return ""  # Don't send any message more than 1 day after draft completion
+                            elif days_since_draft == 1:
+                                logger.info("Draft was completed yesterday - sending completion message")
+                                # Continue to send completion message below
+                            else:  # days_since_draft == 0 or < 0
+                                logger.info("Draft completed today or in future - not sending completion message yet")
+                                return ""
+                        else:
+                            logger.info("No draft timestamp available from API")
+                    except (KeyError, ValueError, TypeError) as e:
+                        logger.info(f"Error getting draft date: {e}")
                         # If we can't get the draft date, don't send repeated messages
                         # Check if this is likely the first day after draft (league.current_week == 1)
                         if league.current_week > 1:
+                            logger.info(f"League current week > 1 ({league.current_week}) - returning empty string")
                             return ""
                     
                     if hasattr(league, 'draft') and league.draft:

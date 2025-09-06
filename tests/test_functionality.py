@@ -489,9 +489,9 @@ class TestFunctionality:
         assert "pre-season" in result
     
     def test_get_draft_reminder_completed_no_repeat(self, mock_league):
-        """Test that draft completed messages are not sent repeatedly after completion day"""
+        """Test that draft completed messages are sent the day after completion, but not repeatedly"""
         
-        # Mock a completed draft that happened yesterday
+        # Test 1: Draft completed yesterday - should send completion message
         yesterday_timestamp = int((datetime(2024, 9, 4).timestamp()) * 1000)
         mock_league.espn_request.get_league_draft.return_value = {
             'draftDetail': {
@@ -505,13 +505,24 @@ class TestFunctionality:
         mock_league.draft = [Mock() for _ in range(120)]  # 120 picks
         
         with patch('gamedaybot.espn.functionality.date') as mock_date:
-            mock_date.today.return_value = date(2024, 9, 5)  # Today
+            mock_date.today.return_value = date(2024, 9, 5)  # Today (1 day after draft)
             with patch('gamedaybot.espn.functionality.datetime') as mock_datetime:
                 mock_datetime.fromtimestamp.side_effect = datetime.fromtimestamp
                 
                 result = get_draft_reminder(mock_league)
                 
-                # Should return empty string (no message) since draft was completed yesterday
+                # Should send completion message the day after draft
+                assert "DRAFT COMPLETED!" in result
+        
+        # Test 2: Draft completed 2 days ago - should NOT send message
+        with patch('gamedaybot.espn.functionality.date') as mock_date:
+            mock_date.today.return_value = date(2024, 9, 6)  # 2 days after draft
+            with patch('gamedaybot.espn.functionality.datetime') as mock_datetime:
+                mock_datetime.fromtimestamp.side_effect = datetime.fromtimestamp
+                
+                result = get_draft_reminder(mock_league)
+                
+                # Should return empty string (no message) since it's been more than 1 day
                 assert result == ""
     
     def test_get_player_status_found(self, mock_league):

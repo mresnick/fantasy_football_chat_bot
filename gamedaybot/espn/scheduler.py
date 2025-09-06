@@ -76,9 +76,18 @@ def scheduler():
     
 
     # Draft reminder: daily at 9:00am local time, only if DRAFT_DATE is configured
+    # End the reminders after the draft date + 2 days to prevent infinite running
     if data.get('draft_date'):
-        sched.add_job(espn_bot, 'cron', ['get_draft_reminder'], id='draft_reminder',
-                      hour=9, minute=0, timezone=my_timezone, replace_existing=True)
+        from datetime import datetime, timedelta
+        try:
+            draft_date = datetime.strptime(data['draft_date'], '%Y-%m-%d').date()
+            # Stop draft reminders 2 days after the draft date
+            draft_end_date = draft_date + timedelta(days=2)
+            sched.add_job(espn_bot, 'cron', ['get_draft_reminder'], id='draft_reminder',
+                          hour=9, minute=0, timezone=my_timezone,
+                          end_date=draft_end_date, replace_existing=True)
+        except (ValueError, TypeError) as e:
+            print(f"Invalid draft date format '{data['draft_date']}': {e}")
 
     print("Ready!")
     sched.start()
