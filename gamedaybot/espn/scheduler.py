@@ -24,7 +24,7 @@ def scheduler():
 
     # close scores (within 15.99 points): monday evening at 6:30pm east coast time.
     # power rankings:                     tuesday evening at 6:30pm local time.
-    # trophies:                           tuesday morning at 7:30am local time.
+    # trophies:                           tuesday evening at 8:15pm local time.
     # standings:                          wednesday morning at 7:30am local time.
     # waiver report:                      wednesday morning at 7:31am local time. (optional)
     # matchups:                           thursday evening at 7:30pm east coast time.
@@ -39,7 +39,7 @@ def scheduler():
                   day_of_week='tue', hour=18, minute=30, start_date=ff_start_date, end_date=ff_end_date,
                   timezone=my_timezone, replace_existing=True)
     sched.add_job(espn_bot, 'cron', ['get_final'], id='final',
-                  day_of_week='tue', hour=9, minute=45, start_date=ff_start_date, end_date=ff_end_date,
+                  day_of_week='tue', hour=20, minute=15, start_date=ff_start_date, end_date=ff_end_date,
                   timezone=my_timezone, replace_existing=True)
     sched.add_job(espn_bot, 'cron', ['get_standings'], id='standings',
                   day_of_week='wed', hour=7, minute=30, start_date=ff_start_date, end_date=ff_end_date,
