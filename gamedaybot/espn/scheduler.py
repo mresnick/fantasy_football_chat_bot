@@ -36,7 +36,7 @@ def scheduler():
                   day_of_week='mon', hour=18, minute=30, start_date=ff_start_date, end_date=ff_end_date,
                   timezone=game_timezone, replace_existing=True)
     sched.add_job(espn_bot, 'cron', ['get_power_rankings'], id='power_rankings',
-                  day_of_week='tue', hour=20, minute=00, start_date=ff_start_date, end_date=ff_end_date,
+                  day_of_week='tue', hour=20, minute=5, start_date=ff_start_date, end_date=ff_end_date,
                   timezone=my_timezone, replace_existing=True)
     sched.add_job(espn_bot, 'cron', ['get_final'], id='final',
                   day_of_week='tue', hour=9, minute=45, start_date=ff_start_date, end_date=ff_end_date,
