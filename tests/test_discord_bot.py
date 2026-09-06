@@ -58,6 +58,24 @@ class TestFantasyFootballCog:
         self.mock_interaction.response.defer = AsyncMock()
         self.mock_interaction.followup = AsyncMock(spec=discord.Webhook)
 
+    @staticmethod
+    def sent_text(call):
+        """
+        Flatten a slash-command reply into searchable text.
+
+        Replies are embeds now, so assertions read the title, description
+        and fields rather than a positional content string. Falls back to
+        the positional argument for the code-block path.
+        """
+        args, kwargs = call
+        if 'embed' in kwargs:
+            data = kwargs['embed'].to_dict()
+            parts = [data.get('title', ''), data.get('description', '')]
+            for field in data.get('fields', []):
+                parts += [field['name'], field['value']]
+            return chr(10).join(part for part in parts if part)
+        return args[0]
+
     def test_init(self):
         """Test FantasyFootballCog initialization"""
         assert self.cog.bot == self.mock_bot
@@ -76,10 +94,8 @@ class TestFantasyFootballCog:
         mock_get_scoreboard.assert_called_once_with(self.mock_league)
         self.mock_interaction.response.send_message.assert_called_once()
         
-        # Check that message is wrapped in codeblock
-        call_args = self.mock_interaction.response.send_message.call_args[0][0]
-        assert call_args.startswith("```")
-        assert call_args.endswith("```")
+        # Replies are rich embeds now, not code blocks, so assert on content.
+        call_args = self.sent_text(self.mock_interaction.response.send_message.call_args)
         assert "Team Alpha: 125.5 vs Team Beta: 110.2" in call_args
 
     @patch('gamedaybot.espn.functionality.get_scoreboard_short')
@@ -87,16 +103,19 @@ class TestFantasyFootballCog:
     async def test_scoreboard(self, mock_get_scoreboard):
         """Test scoreboard command with specific week"""
         week = 3
-        mock_get_scoreboard.return_value = "Week 3 scoreboard data"
+        # Shaped like the real function: a header line then one row per game.
+        mock_get_scoreboard.return_value = "Score Update\n  AA 120.00 -   98.00 BB"
         
         await self.cog.scoreboard.callback(self.cog, self.mock_interaction, week)
         
         mock_get_scoreboard.assert_called_once_with(self.mock_league, week)
         self.mock_interaction.response.send_message.assert_called_once()
         
-        call_args = self.mock_interaction.response.send_message.call_args[0][0]
+        call_args = self.sent_text(self.mock_interaction.response.send_message.call_args)
         assert f"Week {week}" in call_args
-        assert "Week 3 scoreboard data" in call_args
+        assert "AA 120.00" in call_args
+        # The function's own header is replaced by the embed title.
+        assert "Score Update" not in call_args
 
     @patch('gamedaybot.espn.functionality.get_projected_scoreboard')
     @pytest.mark.asyncio
@@ -109,7 +128,7 @@ class TestFantasyFootballCog:
         mock_get_projected.assert_called_once_with(self.mock_league)
         self.mock_interaction.response.send_message.assert_called_once()
         
-        call_args = self.mock_interaction.response.send_message.call_args[0][0]
+        call_args = self.sent_text(self.mock_interaction.response.send_message.call_args)
         assert "Projected: Team Alpha: 130.0 vs Team Beta: 115.5" in call_args
 
     @patch('gamedaybot.espn.functionality.get_standings')
@@ -180,7 +199,7 @@ class TestFantasyFootballCog:
         mock_get_status.assert_called_once_with(self.mock_league, player_name)
         self.mock_interaction.response.send_message.assert_called_once()
         
-        call_args = self.mock_interaction.response.send_message.call_args[0][0]
+        call_args = self.sent_text(self.mock_interaction.response.send_message.call_args)
         assert player_name in call_args
         assert status in call_args
 
@@ -398,5 +417,5 @@ class TestFantasyFootballCog:
         await self.cog.player_status.callback(self.cog, self.mock_interaction, player_name)
         
         mock_get_status.assert_called_once_with(self.mock_league, player_name)
-        call_args = self.mock_interaction.response.send_message.call_args[0][0]
+        call_args = self.sent_text(self.mock_interaction.response.send_message.call_args)
         assert player_name in call_args

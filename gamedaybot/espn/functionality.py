@@ -908,24 +908,26 @@ def get_lucky_trophy(league, week=None, recap=False):
     return (lucky_str + unlucky_str)
 
 
-def get_trophies(league, week=None, recap=False):
+def week_extremes(league, week):
     """
-    Returns trophies for the highest score, lowest score, closest score, and biggest win.
+    Scan a week's box scores for the high, low, blowout and closest games.
+
+    Shared by get_trophies and trophy_fields so the scan (and its box_scores
+    request) happens once per report rather than once per rendering.
 
     Parameters
     ----------
     league : object
-        The league object for which the trophies are to be returned
-    week : int, optional
-        The week for which the trophies are to be returned (default is current week)
+        The league object to scan.
+    week : int
+        The week to scan.
 
     Returns
     -------
-    str
-        A string representing the trophies
+    dict or None
+        Teams and margins for the week, or None if no matchups were scored
+        (an empty schedule, or every team on a bye).
     """
-    if not week:
-        week = league.current_week - 1
 
     matchups = league.box_scores(week=week)
     low_score = 99999999
@@ -972,28 +974,105 @@ def get_trophies(league, week=None, recap=False):
                     blown_out = i.home_team
 
     if high_team is None:
-        # No scored matchups that week (empty schedule, or every team on a bye).
-        return (None, None, None, None) if recap else 'No trophies to hand out this week.'
+        return None
 
-    if (recap):
-        return high_team.team_abbrev, low_team.team_abbrev, blown_out.team_abbrev, close_winner.team_abbrev
+    return {
+        'high_team': high_team, 'high_score': high_score,
+        'low_team': low_team, 'low_score': low_score,
+        'ownerer': ownerer, 'blown_out': blown_out, 'biggest_blowout': biggest_blowout,
+        'close_winner': close_winner, 'close_loser': close_loser, 'closest_score': closest_score,
+    }
 
-    high_score_str = ['👑 High score 👑']+['%s with %.2f points' % (high_team.team_name, high_score)]
-    low_score_str = ['💩 Low score 💩']+['%s with %.2f points' % (low_team.team_name, low_score)]
 
-    text = ['Trophies of the week:'] + high_score_str + low_score_str
+def trophy_fields(league, week=None):
+    """
+    Every trophy for a week as (label, value) pairs.
+
+    The structured form of get_trophies: identical content, not yet joined into
+    a string, so it can become Discord embed fields as well as text.
+
+    Parameters
+    ----------
+    league : object
+        The league object for which the trophies are generated.
+    week : int, optional
+        The week to report on, defaults to the previously completed week.
+
+    Returns
+    -------
+    list
+        (label, value) pairs, empty if the week had no scored matchups.
+    """
+
+    if not week:
+        week = league.current_week - 1
+
+    extremes = week_extremes(league, week)
+    if extremes is None:
+        return []
+
+    pairs = [
+        ('👑 High score 👑',
+         '%s with %.2f points' % (extremes['high_team'].team_name, extremes['high_score'])),
+        ('💩 Low score 💩',
+         '%s with %.2f points' % (extremes['low_team'].team_name, extremes['low_score'])),
+    ]
 
     # A week can lack a blowout or a close game (e.g. a single matchup, or all ties).
-    if ownerer is not None:
-        text += ['😱 Blow out 😱', '%s blew out %s by %.2f points' %
-                 (ownerer.team_name, blown_out.team_name, biggest_blowout)]
-    if close_winner is not None:
-        text += ['😅 Close win 😅', '%s barely beat %s by %.2f points' %
-                 (close_winner.team_name, close_loser.team_name, closest_score)]
+    if extremes['ownerer'] is not None:
+        pairs.append(('😱 Blow out 😱', '%s blew out %s by %.2f points' % (
+            extremes['ownerer'].team_name, extremes['blown_out'].team_name,
+            extremes['biggest_blowout'])))
+    if extremes['close_winner'] is not None:
+        pairs.append(('😅 Close win 😅', '%s barely beat %s by %.2f points' % (
+            extremes['close_winner'].team_name, extremes['close_loser'].team_name,
+            extremes['closest_score'])))
 
-    text += (get_lucky_trophy(league, week) + get_achievers_trophy(league, week) +
-             optimal_team_scores(league, week) + get_most_active_and_laziest(league, week))
+    # These each return a flat list of alternating label and value lines.
+    flat = (get_lucky_trophy(league, week) + get_achievers_trophy(league, week) +
+            optimal_team_scores(league, week) + get_most_active_and_laziest(league, week))
+    pairs += list(zip(flat[0::2], flat[1::2]))
+
+    return pairs
+
+
+def get_trophies(league, week=None, recap=False):
+    """
+    Returns trophies for the highest score, lowest score, closest score, and biggest win.
+
+    Parameters
+    ----------
+    league : object
+        The league object for which the trophies are to be returned
+    week : int, optional
+        The week for which the trophies are to be returned (default is current week)
+    recap : bool, optional
+        Return team abbreviations instead of a message, for the season recap.
+
+    Returns
+    -------
+    str
+        A string representing the trophies
+    """
+    if not week:
+        week = league.current_week - 1
+
+    if recap:
+        extremes = week_extremes(league, week)
+        if extremes is None:
+            return (None, None, None, None)
+        return (extremes['high_team'].team_abbrev, extremes['low_team'].team_abbrev,
+                extremes['blown_out'].team_abbrev, extremes['close_winner'].team_abbrev)
+
+    pairs = trophy_fields(league, week)
+    if not pairs:
+        return 'No trophies to hand out this week.'
+
+    text = ['Trophies of the week:']
+    for name, value in pairs:
+        text += [name, value]
     return '\n'.join(text)
+
 
 def get_player_status(league, player_name):
     player = league.player_info(name = player_name)

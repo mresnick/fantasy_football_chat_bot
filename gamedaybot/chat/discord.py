@@ -35,14 +35,18 @@ class Discord(object):
     def __repr__(self):
         return "Discord Webhook Url(%s)" % self.webhook_url
 
-    def send_message(self, text):
+    def send_message(self, text, embed=None):
         """
         Sends a message to the Discord channel.
 
         Parameters
         ----------
         text : str
-            The message to be sent to the Discord channel.
+            The message to be sent to the Discord channel. Ignored when embed is
+            given, since the embed carries the content.
+        embed : dict, optional
+            A Discord embed payload. When present the message is sent as a rich
+            embed instead of a code block.
 
         Returns
         -------
@@ -55,10 +59,12 @@ class Discord(object):
             If there is an error with the POST request.
         """
 
-        message = "```{0}```".format(text)
-        template = {
-            "content": message  # Discord caps content at 2000 chars
-        }
+        if embed is not None:
+            template = {"embeds": [embed]}
+        else:
+            template = {
+                "content": "```{0}```".format(text)  # Discord caps content at 2000 chars
+            }
 
         headers = {'content-type': 'application/json'}
 

@@ -8,6 +8,7 @@ import sys
 sys.path.insert(0, os.path.abspath('.'))
 
 from gamedaybot.espn.espn_bot import espn_bot, start_bot
+import gamedaybot.utils.report as reports
 
 
 class TestEspnBot:
@@ -158,11 +159,18 @@ class TestEspnBot:
         mock_discord.return_value = Mock()
         
         with patch('gamedaybot.espn.espn_bot.espn') as mock_espn:
-            mock_espn.get_trophies.return_value = "Trophies text"
-            
+            # Trophies are built from structured pairs now, so the same content
+            # can render as text for GroupMe/Slack and as embed fields for Discord.
+            mock_espn.last_completed_week.return_value = 4
+            mock_espn.trophy_fields.return_value = [
+                ('👑 High score 👑', 'Alpha with 120.00 points')]
+
             espn_bot("get_trophies")
-            
-            mock_espn.get_trophies.assert_called_once_with(mock_league)
+
+            mock_espn.trophy_fields.assert_called_once_with(mock_league, week=4)
+            sent = mock_str_limit.call_args[0][0]
+            assert 'Trophies of the week:' in sent
+            assert 'Alpha with 120.00 points' in sent
     
     @patch('gamedaybot.espn.espn_bot.get_env_vars')
     @patch('gamedaybot.espn.espn_bot.GroupMe')
@@ -208,16 +216,20 @@ class TestEspnBot:
         mock_discord.return_value = Mock()
         
         with patch('gamedaybot.espn.espn_bot.espn') as mock_espn:
-            mock_espn.get_scoreboard_short.return_value = "Final scoreboard"
-            mock_espn.get_trophies.return_value = "Final trophies"
+            mock_espn.get_scoreboard_short.return_value = "Score Update\n AA 120.00 -  98.00 BB"
+            mock_espn.trophy_fields.return_value = [('Trophy', 'Winner')]
             # scoringPeriodId is 5, so week 4 is the one that just finished.
             mock_espn.last_completed_week.return_value = 4
 
             espn_bot("get_final")
 
-            mock_espn.last_completed_week.assert_called_once_with(mock_league)
             mock_espn.get_scoreboard_short.assert_called_once_with(mock_league, week=4)
-            mock_espn.get_trophies.assert_called_once_with(mock_league, week=4)
+            mock_espn.trophy_fields.assert_called_once_with(mock_league, week=4)
+            sent = mock_str_limit.call_args[0][0]
+            assert 'Week 4' in sent
+            # The scoreboard's own header is dropped; the title replaces it.
+            assert 'Score Update' not in sent
+            assert 'AA 120.00' in sent
     
     @patch('gamedaybot.espn.espn_bot.get_env_vars')
     @patch('gamedaybot.espn.espn_bot.GroupMe')
@@ -596,3 +608,92 @@ class TestSeasonEndGuard:
         # get_matchups has no week to report once the season is over.
         assert self._run("get_matchups", self.LAST_WEEK + 1, env_data) is False
         assert self._run("get_matchups", self.LAST_WEEK, env_data) is True
+
+
+class TestEmbedSendPath:
+    """
+    Discord receives a rich embed; GroupMe and Slack receive the text they always did.
+
+    The bot builds one Report and renders it per platform, so this pins that the
+    text platforms were not changed by the embed work.
+    """
+
+    LAST_WEEK = 14
+
+    @pytest.fixture
+    def env_data(self):
+        return {
+            'str_limit': 1000,
+            'bot_id': 'test_bot_id',
+            'slack_webhook_url': 'https://hooks.slack.com/test',
+            'discord_webhook_url': 'https://discord.com/webhook/test',
+            'league_id': 123456,
+            'year': 2024,
+            'swid': '{test-swid}',
+            'espn_s2': 'test_s2_cookie',
+            'top_half_scoring': 'false',
+            'random_phrase': 'false',
+            'discord_server_id': 'test_server_id',
+            'discord_token': None,
+        }
+
+    def _league(self):
+        league = Mock()
+        league.scoringPeriodId = 10
+        league.current_week = 10
+        league.settings = Mock()
+        league.settings.matchup_periods = list(range(1, self.LAST_WEEK + 1))
+        return league
+
+    def _run(self, function, env_data, standings_text="Current Standings\n 1: AA (5-2)"):
+        """Run the bot and return the three platform mocks."""
+        groupme, slack, discord_hook = Mock(), Mock(), Mock()
+        with patch('gamedaybot.espn.espn_bot.get_env_vars', return_value=env_data), \
+             patch('gamedaybot.espn.espn_bot.GroupMe', return_value=groupme), \
+             patch('gamedaybot.espn.espn_bot.Slack', return_value=slack), \
+             patch('gamedaybot.espn.espn_bot.Discord', return_value=discord_hook), \
+             patch('gamedaybot.espn.espn_bot.League', return_value=self._league()), \
+             patch('gamedaybot.espn.espn_bot.espn') as mock_espn:
+            mock_espn.get_standings.return_value = standings_text
+            espn_bot(function)
+        return groupme, slack, discord_hook
+
+    def test_discord_gets_an_embed(self, env_data):
+        _, _, discord_hook = self._run('get_standings', env_data)
+
+        discord_hook.send_message.assert_called_once()
+        kwargs = discord_hook.send_message.call_args[1]
+        assert 'embed' in kwargs
+        assert kwargs['embed']['title'] == 'Current Standings'
+
+    def test_text_platforms_get_the_unchanged_text(self, env_data):
+        groupme, slack, _ = self._run('get_standings', env_data)
+
+        for platform in (groupme, slack):
+            platform.send_message.assert_called_once()
+            sent = platform.send_message.call_args[0][0]
+            assert sent == "Current Standings\n 1: AA (5-2)"
+            # No embed keyword reaches the text platforms.
+            assert platform.send_message.call_args[1] == {}
+
+    def test_embed_is_coloured_per_function(self, env_data):
+        _, _, discord_hook = self._run('get_standings', env_data)
+        assert discord_hook.send_message.call_args[1]['embed']['color'] == reports.BLUE
+
+    def test_oversized_report_falls_back_to_text_on_discord(self, env_data):
+        # Too large for one embed, so Discord gets the same split text as the
+        # others rather than a silently truncated card.
+        huge = "Current Standings\n" + ("x" * 200 + "\n") * 40
+        _, _, discord_hook = self._run('get_standings', env_data, standings_text=huge)
+
+        assert discord_hook.send_message.call_count > 1
+        for call in discord_hook.send_message.call_args_list:
+            assert 'embed' not in call[1]
+            assert isinstance(call[0][0], str)
+
+    def test_nothing_is_sent_for_an_empty_report(self, env_data):
+        groupme, slack, discord_hook = self._run('get_standings', env_data, standings_text='')
+
+        groupme.send_message.assert_not_called()
+        slack.send_message.assert_not_called()
+        discord_hook.send_message.assert_not_called()

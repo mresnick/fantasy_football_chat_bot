@@ -2,6 +2,7 @@ import os
 if os.environ.get("AWS_EXECUTION_ENV") is not None:
     # For use in lambda function
     import utils.util as util
+    import utils.report as reports
     from chat.groupme import GroupMe
     from chat.slack import Slack
     from chat.discord import Discord
@@ -10,6 +11,7 @@ else:
     import sys
     sys.path.insert(1, os.path.abspath('.'))
     import gamedaybot.utils.util as util
+    import gamedaybot.utils.report as reports
     from gamedaybot.chat.groupme import GroupMe
     from gamedaybot.chat.slack import Slack
     from gamedaybot.chat.discord import Discord
@@ -200,6 +202,7 @@ def espn_bot(function):
             return
 
     text = ''
+    report = None
     logger.info("Function: " + function)
 
     if function == "get_matchups":
@@ -219,7 +222,10 @@ def espn_bot(function):
     elif function == "get_power_rankings":
         text = espn.get_power_rankings(league)
     elif function == "get_trophies":
-        text = espn.get_trophies(league)
+        week = espn.last_completed_week(league)
+        report = reports.Report(title='Trophies of the week:',
+                                fields=espn.trophy_fields(league, week=week),
+                                color=reports.GOLD, footer='Week %d' % week)
     elif function == "get_standings":
         text = espn.get_standings(league, top_half_scoring)
     elif function == "get_playoff_picture":
@@ -236,8 +242,11 @@ def espn_bot(function):
     elif function == "get_final":
         # on Tuesday we need to get the scores of last week
         week = espn.last_completed_week(league)
-        text = "Final " + espn.get_scoreboard_short(league, week=week)
-        text = text + "\n\n" + espn.get_trophies(league, week=week)
+        scoreboard = espn.get_scoreboard_short(league, week=week).split("\n")
+        report = reports.Report(title="Final — Week %d" % week,
+                                body=scoreboard[1:],
+                                fields=espn.trophy_fields(league, week=week),
+                                color=reports.GOLD, footer='Week %d final' % week)
     elif function == "get_waiver_report" and swid != '{1}' and espn_s2 != '1':
         faab = league.settings.faab
         text = espn.get_waiver_report(league, faab)
@@ -263,6 +272,14 @@ def espn_bot(function):
         text = "Something bad happened. HALP"
 
     logger.debug(data)
+
+    # Every report becomes a Report so Discord can render it as an embed.
+    # Wrapping plain text round-trips exactly, so GroupMe and Slack are unaffected.
+    if report is None and text:
+        report = reports.from_text(text, color=reports.FUNCTION_COLORS.get(function))
+    if report is not None:
+        text = report.to_text()
+
     if text != '':
         logger.debug(text)
         messages = util.str_limit_check(text, str_limit)
@@ -270,7 +287,14 @@ def espn_bot(function):
             if message.strip():  # Only send non-empty messages
                 groupme_bot.send_message(message)
                 slack_bot.send_message(message)
-                discord_webhook.send_message(message)
+
+        # Discord gets one embed when the report fits, else the same split text.
+        if report is not None and report.fits_embed():
+            discord_webhook.send_message(None, embed=report.to_embed())
+        else:
+            for message in messages:
+                if message.strip():
+                    discord_webhook.send_message(message)
 
 def start_bot(bot, discord_token):
     bot.run(discord_token)

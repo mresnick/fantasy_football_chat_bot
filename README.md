@@ -274,7 +274,10 @@ My Standings look wrong. I have weird (+1) in it.
 
 ## Discord Bot Commands
 
-If you set up the Discord bot with a `DISCORD_TOKEN`, you get access to these slash commands:
+If you set up the Discord bot with a `DISCORD_TOKEN`, you get access to these slash commands.
+Replies come back as rich embeds - colour-coded by report type, with the content laid out in
+fields rather than a code block. GroupMe and Slack continue to receive plain text.
+A report too large for one embed falls back to text on Discord too, rather than being truncated.
 
 - `/current_scores` - Get current scores for the week
 - `/scoreboard [week]` - Get the scoreboard for a specific week
@@ -284,6 +287,9 @@ If you set up the Discord bot with a `DISCORD_TOKEN`, you get access to these sl
 - `/matchups` - Get the week's matchups
 - `/close_scores` - Get close projected scores for the week
 - `/power_rankings` - Get power rankings for the week
+- `/trophies` - Get the trophies for the week
+- `/playoff_picture` - Playoff seeding, who is in or out, and clinching scenarios
+- `/draft_report` - Draft grades plus the biggest steals and busts
 - `/player_status [player_name]` - Get injury status of a player
 - `/lineup [team_name] [week]` - Get the lineup for a team
 - `/recap` - Get season recap
