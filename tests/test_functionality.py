@@ -14,7 +14,9 @@ from gamedaybot.espn.functionality import (
     get_matchups, get_close_scores, get_monitor, get_waiver_report,
     get_power_rankings, get_trophies, get_draft_reminder, all_played,
     scan_roster, top_half_wins, OrderedBoxPlayer, optimal_lineup_score,
-    get_starter_counts, best_flex, last_completed_week
+    get_starter_counts, best_flex, last_completed_week,
+    get_playoff_picture, get_draft_report, completed_matchups,
+    playoff_status, wins_to_clinch
 )
 
 
@@ -668,3 +670,186 @@ class TestPowerRankingsEdgeCases:
         result = get_power_rankings(league)
 
         assert "0.00" in result
+
+
+class TestPlayoffPicture:
+    """Seeding, clinch/elimination logic, and clinching scenarios."""
+
+    REG_SEASON = 14
+    SPOTS = 6
+
+    def _league(self, records, playoff_pcts=None):
+        teams = []
+        for i, (wins, losses, ties) in enumerate(records):
+            team = Mock()
+            team.team_abbrev = 'T%02d' % (i + 1)
+            team.team_name = 'Team %02d' % (i + 1)
+            team.wins, team.losses, team.ties = wins, losses, ties
+            team.points_for = 1000 - i * 20
+            team.playoff_pct = (playoff_pcts or [0.0] * len(records))[i]
+            teams.append(team)
+        league = Mock()
+        league.teams = teams
+        league.settings = Mock()
+        league.settings.playoff_team_count = self.SPOTS
+        league.settings.reg_season_count = self.REG_SEASON
+        league.standings.return_value = sorted(teams, key=lambda t: (-t.wins, -t.points_for))
+        return league
+
+    def test_completed_matchups_reads_records_not_week_counters(self):
+        league = self._league([(6, 3, 1), (5, 5, 0)])
+        assert completed_matchups(league) == 10
+
+    def test_returns_empty_before_any_games(self):
+        assert get_playoff_picture(self._league([(0, 0, 0)] * 10)) == ''
+
+    def test_shows_seeding_with_a_cut_line(self):
+        result = get_playoff_picture(self._league([(9, 2, 0), (8, 3, 0), (7, 4, 0), (7, 4, 0),
+                                                   (6, 5, 0), (6, 5, 0), (5, 6, 0), (4, 7, 0),
+                                                   (2, 9, 0), (1, 10, 0)]))
+        assert 'Playoff Picture' in result
+        assert 'cut line' in result
+        # The cut belongs directly after the last team that would make it.
+        lines = result.split('\n')
+        cut = next(i for i, line in enumerate(lines) if 'cut line' in line)
+        assert lines[cut - 1].strip().startswith('6:')
+        assert lines[cut + 1].strip().startswith('7:')
+
+    def test_runaway_leader_is_marked_clinched(self):
+        # 11-0 with 3 to play: only two teams can even reach 11 wins, so with six
+        # spots available the leader cannot be pushed out.
+        result = get_playoff_picture(self._league([(11, 0, 0)] + [(4, 7, 0)] * 9))
+        assert ' x ' in result
+        assert 'x = clinched' in result
+
+    def test_hopeless_team_is_marked_eliminated(self):
+        result = get_playoff_picture(self._league([(11, 0, 0)] * 6 + [(0, 11, 0)] * 4))
+        assert 'e = eliminated' in result
+
+    def test_nobody_is_clinched_or_eliminated_in_week_one(self):
+        result = get_playoff_picture(self._league([(1, 0, 0)] * 5 + [(0, 1, 0)] * 5))
+        assert 'clinched' not in result
+        assert 'eliminated' not in result
+
+    def test_reports_clinching_scenarios_while_games_remain(self):
+        result = get_playoff_picture(self._league([(9, 2, 0), (8, 3, 0), (7, 4, 0), (7, 4, 0),
+                                                   (6, 5, 0), (6, 5, 0), (5, 6, 0), (4, 7, 0),
+                                                   (2, 9, 0), (1, 10, 0)]))
+        assert 'clinches with' in result
+
+    def test_no_scenarios_once_the_regular_season_is_over(self):
+        result = get_playoff_picture(self._league([(12, 2, 0), (11, 3, 0), (9, 5, 0), (8, 6, 0),
+                                                   (8, 6, 0), (7, 7, 0), (6, 8, 0), (5, 9, 0),
+                                                   (3, 11, 0), (1, 13, 0)]))
+        assert 'Regular season complete' in result
+        assert 'clinches with' not in result
+
+    def test_ties_are_shown_only_when_a_team_has_tied(self):
+        without = get_playoff_picture(self._league([(5, 5, 0)] * 10))
+        assert '(5-5)' in without
+        with_tie = get_playoff_picture(self._league([(5, 4, 1)] + [(5, 5, 0)] * 9))
+        assert '(5-4-1)' in with_tie
+
+    def test_wins_to_clinch_counts_down_as_wins_pile_up(self):
+        teams = self._league([(8, 2, 0)] + [(4, 6, 0)] * 9).teams
+        leader = teams[0]
+        far = wins_to_clinch(leader, teams, self.SPOTS, 4)
+        leader.wins = 9
+        near = wins_to_clinch(leader, teams, self.SPOTS, 4)
+        assert far == 1
+        assert near == 0
+        assert near < far
+
+    def test_nothing_can_be_clinched_in_a_perfectly_tied_league(self):
+        # Ten teams at 5-5 with four to play: every rival can still reach nine
+        # wins, so with six spots any team can be squeezed out on tiebreakers.
+        teams = self._league([(5, 5, 0)] * 10).teams
+        assert wins_to_clinch(teams[0], teams, self.SPOTS, 4) is None
+
+    def test_playoff_status_is_blank_when_undecided(self):
+        teams = self._league([(5, 5, 0)] * 10).teams
+        assert playoff_status(teams[0], teams, self.SPOTS, 4) == ''
+
+
+class TestDraftReport:
+    """Draft grading, steals, and busts."""
+
+    def _league(self, num_picks=40, played=8, points_for_pick=None):
+        teams = []
+        for i in range(4):
+            team = Mock()
+            team.team_abbrev = 'T%d' % (i + 1)
+            team.wins, team.losses, team.ties = played // 2, played - played // 2, 0
+            teams.append(team)
+
+        picks = []
+        for overall in range(1, num_picks + 1):
+            pick = Mock()
+            pick.playerId = 1000 + overall
+            pick.playerName = 'Player %03d' % overall
+            pick.round_num = (overall - 1) // 4 + 1
+            pick.round_pick = (overall - 1) % 4 + 1
+            pick.team = teams[(overall - 1) % 4]
+            picks.append(pick)
+
+        league = Mock()
+        league.teams = teams
+        league.draft = picks
+        league.settings = Mock()
+
+        scorer = points_for_pick or (lambda overall: max(200.0 - overall * 4.0, 1.0))
+
+        def player_info(playerId=None, name=None):
+            out = []
+            for pid in playerId:
+                player = Mock()
+                player.playerId = pid
+                player.total_points = scorer(pid - 1000)
+                out.append(player)
+            return out
+
+        league.player_info.side_effect = player_info
+        return league
+
+    def test_returns_empty_without_draft_data(self):
+        league = self._league()
+        league.draft = []
+        assert get_draft_report(league) == ''
+
+    def test_asks_for_patience_early_in_the_season(self):
+        result = get_draft_report(self._league(played=2), min_weeks=4)
+        assert 'after week 4' in result
+
+    def test_grades_every_team(self):
+        result = get_draft_report(self._league())
+        assert 'Draft Report Card' in result
+        for abbrev in ('T1', 'T2', 'T3', 'T4'):
+            assert abbrev in result
+
+    def test_a_late_pick_that_scored_big_is_the_top_steal(self):
+        # Pick 40 outscores everyone; it was taken last, so it is the biggest steal.
+        def scorer(overall):
+            return 999.0 if overall == 40 else max(200.0 - overall * 4.0, 1.0)
+
+        result = get_draft_report(self._league(points_for_pick=scorer))
+        steals = result.split('Biggest Steals')[1].split('Biggest Busts')[0]
+        assert 'Player 040' in steals
+
+    def test_an_early_pick_that_flopped_is_the_top_bust(self):
+        def scorer(overall):
+            return 0.0 if overall == 1 else max(200.0 - overall * 4.0, 1.0)
+
+        result = get_draft_report(self._league(points_for_pick=scorer))
+        busts = result.split('Biggest Busts')[1]
+        assert 'Player 001' in busts
+
+    def test_player_lookups_are_batched(self):
+        league = self._league(num_picks=120)
+        get_draft_report(league)
+        # 120 picks at 50 per request is 3 calls, not 120.
+        assert league.player_info.call_count == 3
+
+    def test_survives_a_failed_player_lookup(self):
+        league = self._league()
+        league.player_info.side_effect = Exception("ESPN unavailable")
+        assert get_draft_report(league) == ''

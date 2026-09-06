@@ -30,6 +30,20 @@ class FantasyFootballCog(commands.Cog):
     async def standings(self, interaction):
         await interaction.response.send_message(self.codeblock(espn.get_standings(self.league)))
 
+    @app_commands.command(description="Get the playoff picture and clinching scenarios.")
+    async def playoff_picture(self, interaction):
+        text = espn.get_playoff_picture(self.league)
+        await interaction.response.send_message(self.codeblock(
+            text or "No playoff picture yet - no games have been played."))
+
+    @app_commands.command(description="Get draft grades plus the biggest steals and busts.")
+    async def draft_report(self, interaction):
+        # Grading pulls season points for every drafted player, so this is slow.
+        await interaction.response.defer()
+        text = espn.get_draft_report(self.league)
+        await interaction.followup.send(self.codeblock(
+            text or "No draft data available for this league."))
+
     @app_commands.command(description="Get players to monitor.")
     async def players_to_monitor(self, interaction):
         await interaction.response.send_message(self.codeblock(espn.get_monitor(self.league)))

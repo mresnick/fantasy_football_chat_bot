@@ -85,6 +85,8 @@ def espn_bot(function):
     get_power_rankings: sends a message with the power rankings for the league.
     get_trophies: sends a message with the trophies for the league.
     get_standings: sends a message with the standings for the league.
+    get_playoff_picture: sends the playoff seeding, who is in or out, and clinching scenarios.
+    get_draft_report: sends draft grades plus the biggest steals and busts.
     get_final: sends the final scores and trophies for the previous week.
     get_waiver_report: sends a message with the waiver report for the league.
     init: sends a message to confirm that the bot has been set up.
@@ -178,7 +180,7 @@ def espn_bot(function):
         broadcast_message = None
 
     # These never depend on the season being live.
-    always_run = ["init", "broadcast", "win_matrix", "trophy_recap"]
+    always_run = ["init", "broadcast", "win_matrix", "trophy_recap", "get_draft_report"]
     # These report on the week that just ended, so they must still fire on the
     # Tuesday after the final week -- by then scoringPeriodId has already rolled
     # past the last matchup period and the plain guard below would skip them.
@@ -220,6 +222,10 @@ def espn_bot(function):
         text = espn.get_trophies(league)
     elif function == "get_standings":
         text = espn.get_standings(league, top_half_scoring)
+    elif function == "get_playoff_picture":
+        text = espn.get_playoff_picture(league)
+    elif function == "get_draft_report":
+        text = espn.get_draft_report(league)
     elif function == "win_matrix":
         text = recap.win_matrix(league)
     elif function == "trophy_recap":

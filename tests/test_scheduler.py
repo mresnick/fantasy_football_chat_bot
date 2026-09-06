@@ -420,10 +420,10 @@ class TestScheduler:
         scheduler()
         
         # With minimal config, should have these jobs:
-        # 1. close_scores, 2. power_rankings, 3. final, 4. standings, 
-        # 5. waiver_report, 6. matchups, 7. scoreboard1, 8. scoreboard2
-        # Total: 8 jobs
-        expected_jobs = 8
+        # 1. close_scores, 2. power_rankings, 3. final, 4. standings,
+        # 5. waiver_report, 6. playoff_picture, 7. matchups,
+        # 8. scoreboard1, 9. scoreboard2
+        expected_jobs = 9
         assert mock_scheduler_instance.add_job.call_count == expected_jobs
     
     @patch('gamedaybot.espn.scheduler.BlockingScheduler')
@@ -436,15 +436,10 @@ class TestScheduler:
         
         scheduler()
         
-        # With all options enabled, should have additional jobs:
-        # Basic 8 jobs + monitor (1) + draft_reminder (1) + daily_waiver replaces weekly waiver
-        # Total: 10 jobs (8 basic - 1 weekly waiver + 1 daily waiver + 1 monitor + 1 draft)
-        # With all options enabled, we get:
-        # 8 basic jobs + 1 monitor + 1 draft_reminder = 10 jobs
-        # (daily waiver replaces weekly waiver with same ID)
-        # But add_job is called 11 times total because both waiver jobs are added
-        # even though the second one replaces the first
-        expected_jobs = 11
+        # 9 base jobs + daily_waiver + monitor + draft_reminder.
+        # The daily waiver is a separate job from the Wednesday one (distinct id),
+        # so both are added and both run.
+        expected_jobs = 12
         assert mock_scheduler_instance.add_job.call_count == expected_jobs
     
     @patch('gamedaybot.espn.scheduler.BlockingScheduler')

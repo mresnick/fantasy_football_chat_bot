@@ -1140,3 +1140,279 @@ def get_draft_reminder(league, draft_date=None):
             return ""  # Don't send unknown status messages during the season
     except Exception:
         return ""  # If we can't determine anything, don't send a message
+
+
+def completed_matchups(league):
+    """
+    Number of regular season matchups that have finished.
+
+    Derived from team records rather than the week counters, because
+    scoringPeriodId and current_week both drift at the season boundary while
+    wins + losses + ties is always exactly what has been played.
+
+    Parameters
+    ----------
+    league: object
+        The league object to inspect.
+
+    Returns
+    -------
+    int
+        Matchups completed so far, 0 before the season starts.
+    """
+
+    if not league.teams:
+        return 0
+    return max(t.wins + t.losses + t.ties for t in league.teams)
+
+
+def format_record(team, show_ties=False):
+    """Format a team's record as W-L, or W-L-T when any team in the league has tied."""
+
+    if show_ties:
+        return '%d-%d-%d' % (team.wins, team.losses, team.ties)
+    return '%d-%d' % (team.wins, team.losses)
+
+
+def playoff_status(team, teams, playoff_spots, weeks_remaining):
+    """
+    Whether a team has clinched a playoff berth or been eliminated.
+
+    Both tests are deliberately conservative: a rival that can merely *match*
+    the team's win total is treated as able to pass it, since seeding ties are
+    broken on points and are not predictable from records alone. A team is only
+    reported as clinched when no combination of remaining results can miss it.
+
+    Parameters
+    ----------
+    team: object
+        The team to classify.
+    teams: list
+        Every team in the league.
+    playoff_spots: int
+        Number of playoff berths available.
+    weeks_remaining: int
+        Regular season matchups still to be played.
+
+    Returns
+    -------
+    str
+        'x' if clinched, 'e' if eliminated, '' if still undecided.
+    """
+
+    rivals = [t for t in teams if t is not team]
+
+    could_catch = sum(1 for t in rivals if t.wins + weeks_remaining >= team.wins)
+    if could_catch < playoff_spots:
+        return 'x'
+
+    max_wins = team.wins + weeks_remaining
+    if sum(1 for t in rivals if t.wins > max_wins) >= playoff_spots:
+        return 'e'
+
+    return ''
+
+
+def wins_to_clinch(team, teams, playoff_spots, weeks_remaining):
+    """
+    Fewest additional wins that guarantee a team a playoff spot.
+
+    Returns 0 if already clinched, or None if no number of wins can guarantee
+    it (the team can still be passed even by winning out).
+    """
+
+    for extra in range(0, weeks_remaining + 1):
+        final_wins = team.wins + extra
+        contenders = sum(1 for t in teams
+                         if t is not team and t.wins + weeks_remaining >= final_wins)
+        if contenders < playoff_spots:
+            return extra
+    return None
+
+
+def get_playoff_picture(league, week=None):
+    """
+    Current playoff seeding, who is in, who is out, and what it takes to clinch.
+
+    Seeding comes from league.standings(), which is ESPN's own ordering with the
+    league's tiebreakers already applied.
+
+    Parameters
+    ----------
+    league: object
+        The league object for which the playoff picture is generated.
+    week: int, optional
+        Unused; accepted so this matches the signature of the other report
+        functions and can be scheduled the same way.
+
+    Returns
+    -------
+    str
+        The playoff picture, or an empty string before any games are played.
+    """
+
+    teams = league.teams
+    playoff_spots = getattr(league.settings, 'playoff_team_count', 0) or 0
+    reg_season_count = getattr(league.settings, 'reg_season_count', 0) or 0
+    if not teams or playoff_spots <= 0 or reg_season_count <= 0:
+        return ''
+
+    played = completed_matchups(league)
+    if played == 0:
+        # Nothing to show before week 1 is in the books.
+        return ''
+
+    weeks_remaining = max(reg_season_count - played, 0)
+    show_ties = any(t.ties for t in teams)
+
+    if weeks_remaining:
+        subtitle = '%d played, %d to go - top %d make the playoffs' % (
+            played, weeks_remaining, playoff_spots)
+    else:
+        subtitle = 'Regular season complete - top %d make the playoffs' % playoff_spots
+
+    text = ['Playoff Picture', subtitle, '']
+
+    clinched = eliminated = False
+    for seed, team in enumerate(league.standings(), start=1):
+        status = playoff_status(team, teams, playoff_spots, weeks_remaining)
+        clinched = clinched or status == 'x'
+        eliminated = eliminated or status == 'e'
+        text.append('%2d: %-4s %-7s %1s %5.1f%%' % (
+            seed, team.team_abbrev, '(' + format_record(team, show_ties) + ')',
+            status, team.playoff_pct))
+        if seed == playoff_spots:
+            text.append('----------- cut line -----------')
+
+    legend = []
+    if clinched:
+        legend.append('x = clinched')
+    if eliminated:
+        legend.append('e = eliminated')
+    if legend:
+        text += ['', ', '.join(legend)]
+
+    if weeks_remaining:
+        scenarios = []
+        for team in league.standings():
+            if playoff_status(team, teams, playoff_spots, weeks_remaining):
+                continue
+            need = wins_to_clinch(team, teams, playoff_spots, weeks_remaining)
+            if need:
+                scenarios.append('%s clinches with %d more win%s' % (
+                    team.team_abbrev, need, '' if need == 1 else 's'))
+        if scenarios:
+            text += [''] + scenarios[:6]
+
+    return '\n'.join(text)
+
+
+def drafted_player_points(league, picks, chunk_size=50):
+    """
+    Season points for every drafted player, keyed by player id.
+
+    player_info accepts a list, so this costs one request per chunk_size picks
+    rather than one per pick. Players ESPN no longer returns (retired, or never
+    rostered) are simply absent and treated as zero by the caller.
+    """
+
+    points = {}
+    ids = [p.playerId for p in picks if p.playerId]
+
+    for start in range(0, len(ids), chunk_size):
+        try:
+            info = league.player_info(playerId=ids[start:start + chunk_size])
+        except Exception:
+            # One bad chunk should not sink the whole report.
+            continue
+        if info is None:
+            continue
+        if not isinstance(info, list):
+            info = [info]
+        for player in info:
+            points[player.playerId] = player.total_points or 0
+
+    return points
+
+
+DRAFT_GRADES = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'F']
+
+
+def get_draft_report(league, min_weeks=4, list_size=5):
+    """
+    Grade every team's draft, and name the biggest steals and busts.
+
+    A pick's value is how far its player's scoring rank beat the slot it was
+    taken at: a player taken 100th who finished 10th in scoring among drafted
+    players is +90. Team grades rank teams by their average pick value, so they
+    are relative to this league rather than an absolute scale.
+
+    Parameters
+    ----------
+    league: object
+        The league object whose draft is graded.
+    min_weeks: int, optional
+        Matchups that must be complete before grades mean anything, default 4.
+    list_size: int, optional
+        How many steals and busts to list, default 5.
+
+    Returns
+    -------
+    str
+        The draft report, or an empty string if the league has no draft data.
+    """
+
+    picks = getattr(league, 'draft', None)
+    if not picks:
+        return ''
+
+    played = completed_matchups(league)
+    if played < min_weeks:
+        return ('Draft report card needs a few weeks of scoring to mean anything. '
+                'Check back after week %d.' % min_weeks)
+
+    points = drafted_player_points(league, picks)
+    if not points:
+        return ''
+
+    ordered = list(enumerate(picks, start=1))
+    by_points = sorted(ordered, key=lambda op: points.get(op[1].playerId, 0), reverse=True)
+
+    # value > 0 means the player outscored the slot he was taken at.
+    value = {}
+    for scoring_rank, (overall, _) in enumerate(by_points, start=1):
+        value[overall] = overall - scoring_rank
+
+    team_values = {}
+    for overall, pick in ordered:
+        team_values.setdefault(pick.team, []).append(value[overall])
+
+    ranked_teams = sorted(((sum(v) / len(v), t) for t, v in team_values.items()),
+                          key=lambda av: av[0], reverse=True)
+
+    text = ['Draft Report Card',
+            'Value = where a pick finished in scoring vs. where it was taken.', '',
+            'Team Grades']
+    for index, (avg, team) in enumerate(ranked_teams):
+        grade = DRAFT_GRADES[min(index * len(DRAFT_GRADES) // len(ranked_teams),
+                                 len(DRAFT_GRADES) - 1)]
+        text.append('%2d: %-4s %-2s %+6.1f' % (
+            index + 1, getattr(team, 'team_abbrev', '?'), grade, avg))
+
+    def describe(overall, pick):
+        return '  R%s.%s %-22s %-4s %6.1f pts (%+d)' % (
+            pick.round_num, pick.round_pick, pick.playerName[:22],
+            getattr(pick.team, 'team_abbrev', '?'),
+            points.get(pick.playerId, 0), value[overall])
+
+    by_value = sorted(ordered, key=lambda op: value[op[0]], reverse=True)
+
+    text += ['', 'Biggest Steals']
+    for overall, pick in by_value[:list_size]:
+        text.append(describe(overall, pick))
+
+    text += ['', 'Biggest Busts']
+    for overall, pick in list(reversed(by_value))[:list_size]:
+        text.append(describe(overall, pick))
+
+    return '\n'.join(text)
