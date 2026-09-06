@@ -39,10 +39,16 @@ def trophy_recap(league):
     for week in range(1, league.current_week):
         # Get high score, low score, blown out, and close win trophies
         high_score_team, low_score_team, blown_out_team, close_win_team = espn.get_trophies(league=league, week=week, recap=True)
+        if high_score_team is None:
+            # Week had no scored matchups; nothing to tally.
+            continue
         team_trophies[high_score_team][0] += 1
         team_trophies[low_score_team][1] += 1
-        team_trophies[blown_out_team][2] += 1
-        team_trophies[close_win_team][3] += 1
+        # A week can lack a blowout or a close game.
+        if blown_out_team is not None:
+            team_trophies[blown_out_team][2] += 1
+        if close_win_team is not None:
+            team_trophies[close_win_team][3] += 1
 
         # Get lucky and unlucky trophies
         lucky_team, unlucky_team, scores = espn.get_lucky_trophy(league=league, week=week, recap=True)

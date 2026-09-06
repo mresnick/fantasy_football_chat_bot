@@ -49,9 +49,11 @@ def scheduler():
                   timezone=my_timezone, replace_existing=True)
 
     if data['daily_waiver']:
+        # Distinct id: reusing 'waiver_report' replaced the Wednesday job above,
+        # so daily waivers ran every day *except* Wednesday.
         sched.add_job(
             espn_bot, 'cron', ['get_waiver_report'],
-            id='waiver_report', day_of_week='mon, tue, thu, fri, sat, sun', hour=7, minute=31, start_date=ff_start_date,
+            id='waiver_report_daily', day_of_week='mon, tue, thu, fri, sat, sun', hour=7, minute=31, start_date=ff_start_date,
             end_date=ff_end_date, timezone=my_timezone, replace_existing=True)
 
     sched.add_job(espn_bot, 'cron', ['get_matchups'], id='matchups',

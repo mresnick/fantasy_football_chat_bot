@@ -42,6 +42,10 @@ class TestEspnBot:
         league.current_week = 5
         league.settings = Mock()
         league.settings.matchup_periods = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+        league.settings.position_slot_counts = {
+            'QB': 1, 'RB': 2, 'WR': 2, 'TE': 1, 'RB/WR/TE': 1,
+            'D/ST': 1, 'K': 1, 'BE': 7, 'IR': 1, 'P': 0,
+        }
         league.settings.faab = True
         return league
     
@@ -206,10 +210,12 @@ class TestEspnBot:
         with patch('gamedaybot.espn.espn_bot.espn') as mock_espn:
             mock_espn.get_scoreboard_short.return_value = "Final scoreboard"
             mock_espn.get_trophies.return_value = "Final trophies"
-            
+            # scoringPeriodId is 5, so week 4 is the one that just finished.
+            mock_espn.last_completed_week.return_value = 4
+
             espn_bot("get_final")
-            
-            # Should call with previous week (current_week - 1 = 4)
+
+            mock_espn.last_completed_week.assert_called_once_with(mock_league)
             mock_espn.get_scoreboard_short.assert_called_once_with(mock_league, week=4)
             mock_espn.get_trophies.assert_called_once_with(mock_league, week=4)
     
@@ -521,3 +527,72 @@ class TestEspnBot:
                 league_id=123456,
                 year=2024
             )
+
+
+class TestSeasonEndGuard:
+    """The 'Not in active season' guard used to swallow the final week's recap.
+
+    On the Tuesday after the last matchup week, scoringPeriodId has already
+    advanced past len(settings.matchup_periods), so get_final never ran and the
+    season's last Final message was never sent.
+    """
+
+    LAST_WEEK = 14
+
+    @pytest.fixture
+    def env_data(self):
+        return {
+            'str_limit': 1000,
+            'bot_id': 'test_bot_id',
+            'slack_webhook_url': 'https://hooks.slack.com/test',
+            'discord_webhook_url': 'https://discord.com/webhook/test',
+            'league_id': 123456,
+            'year': 2024,
+            'swid': '{test-swid}',
+            'espn_s2': 'test_s2_cookie',
+            'top_half_scoring': 'false',
+            'random_phrase': 'false',
+            'discord_server_id': 'test_server_id',
+            'discord_token': None,
+            'init_msg': 'Bot initialized',
+        }
+
+    def _league(self, scoring_period_id):
+        league = Mock()
+        league.scoringPeriodId = scoring_period_id
+        league.current_week = min(scoring_period_id, self.LAST_WEEK)
+        league.settings = Mock()
+        league.settings.matchup_periods = list(range(1, self.LAST_WEEK + 1))
+        league.settings.faab = True
+        return league
+
+    def _run(self, function, scoring_period_id, env_data):
+        """Run espn_bot and report whether anything was actually sent."""
+        with patch('gamedaybot.espn.espn_bot.get_env_vars', return_value=env_data),              patch('gamedaybot.espn.espn_bot.GroupMe'),              patch('gamedaybot.espn.espn_bot.Slack'),              patch('gamedaybot.espn.espn_bot.Discord'),              patch('gamedaybot.espn.espn_bot.League',
+                   return_value=self._league(scoring_period_id)),              patch('gamedaybot.espn.espn_bot.util.str_limit_check',
+                   return_value=["msg"]) as mock_limit,              patch('gamedaybot.espn.espn_bot.espn') as mock_espn:
+            mock_espn.get_scoreboard_short.return_value = "scores"
+            mock_espn.get_trophies.return_value = "trophies"
+            mock_espn.get_power_rankings.return_value = "rankings"
+            mock_espn.get_standings.return_value = "standings"
+            mock_espn.get_matchups.return_value = "matchups"
+            mock_espn.get_projected_scoreboard.return_value = "projected"
+            mock_espn.last_completed_week.return_value = self.LAST_WEEK
+            espn_bot(function)
+            return mock_limit.called
+
+    def test_get_final_still_sends_on_tuesday_after_the_final_week(self, env_data):
+        # scoringPeriodId has rolled to 15, one past the last matchup week.
+        assert self._run("get_final", self.LAST_WEEK + 1, env_data) is True
+
+    def test_other_end_of_season_recaps_still_send(self, env_data):
+        for function in ("get_power_rankings", "get_standings", "get_trophies"):
+            assert self._run(function, self.LAST_WEEK + 1, env_data) is True, function
+
+    def test_recaps_stop_once_the_grace_week_has_passed(self, env_data):
+        assert self._run("get_final", self.LAST_WEEK + 2, env_data) is False
+
+    def test_in_season_functions_stop_at_the_final_week(self, env_data):
+        # get_matchups has no week to report once the season is over.
+        assert self._run("get_matchups", self.LAST_WEEK + 1, env_data) is False
+        assert self._run("get_matchups", self.LAST_WEEK, env_data) is True

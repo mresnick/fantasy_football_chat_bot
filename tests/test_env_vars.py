@@ -2,6 +2,7 @@
 import pytest
 from unittest.mock import patch, Mock
 import os
+from datetime import date
 import sys
 
 # Add the project root to the path
@@ -55,12 +56,14 @@ class TestEnvVars:
             result = get_env_vars()
             
             # Check default values
-            assert result['ff_start_date'] == '2024-09-05'
-            assert result['ff_end_date'] == '2024-12-31'
+            # Defaults track the current season rather than a hardcoded year.
+            current_year = date.today().year
+            assert result['ff_start_date'] == '%d-09-05' % current_year
+            assert result['ff_end_date'] == '%d-12-31' % current_year
             assert result['my_timezone'] == 'America/New_York'
             assert result['daily_waiver'] is False
             assert result['monitor_report'] is True
-            assert result['year'] == 2024
+            assert result['year'] == date.today().year
             assert result['swid'] == '{1}'
             assert result['espn_s2'] == '1'
             assert result['test'] is False
@@ -86,7 +89,7 @@ class TestEnvVars:
             assert result['slack_webhook_url'] == 'https://hooks.slack.com/test'
             assert result['discord_webhook_url'] == 'https://discord.com/webhook/test'
             assert result['league_id'] == '123456'
-            assert result['year'] == 2024
+            assert result['year'] == 2024  # LEAGUE_YEAR is set explicitly in this fixture
             assert result['swid'] == '{test-swid-123}'
             assert result['espn_s2'] == 'test_espn_s2_cookie'
             assert result['test'] is False
@@ -125,8 +128,8 @@ class TestEnvVars:
         with patch.dict(os.environ, env_vars, clear=True):
             result = get_env_vars()
             
-            # Discord has 3000 char limit
-            assert result['str_limit'] == 3000
+            # Discord caps content at 2000; the ``` code fence costs 6 more.
+            assert result['str_limit'] == 1994
     
     def test_get_env_vars_str_limit_multiple_platforms(self):
         """Test string limit when multiple platforms are configured"""
@@ -140,8 +143,9 @@ class TestEnvVars:
         with patch.dict(os.environ, env_vars, clear=True):
             result = get_env_vars()
             
-            # Should prioritize Discord (3000) over GroupMe (1000) over Slack (40000)
-            assert result['str_limit'] == 3000
+            # Every message goes to every configured platform, so the limit must
+            # be the smallest in use -- GroupMe's 1000 here, not the last one read.
+            assert result['str_limit'] == 1000
     
     def test_get_env_vars_no_messaging_platform(self):
         """Test get_env_vars raises exception when no messaging platform is configured"""

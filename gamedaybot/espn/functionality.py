@@ -121,6 +121,32 @@ def top_half_wins(league, top_half_totals, week):
     return top_half_totals
 
 
+def last_completed_week(league):
+    """
+    Return the week whose games have finished, i.e. the week a Tuesday recap should report on.
+
+    league.current_week cannot be used for this. espn_api clamps current_week to
+    finalScoringPeriod, so once the season ends it stops advancing and
+    `current_week - 1` points at the second-to-last week forever. scoringPeriodId
+    is not clamped, so it still rolls over to (last week + 1) after the final week.
+
+    Parameters
+    ----------
+    league: object
+        The league object for which to determine the last completed week.
+
+    Returns
+    -------
+    int
+        The most recently completed week, clamped to the league's final matchup week.
+    """
+
+    last_matchup_week = len(league.settings.matchup_periods)
+    # scoringPeriodId is the week now in progress; the one before it just finished.
+    week = min(league.scoringPeriodId, last_matchup_week + 1) - 1
+    return max(week, 1)
+
+
 def all_played(lineup):
     """
     Check if all the players in a given lineup have played their game.
@@ -441,14 +467,18 @@ def get_power_rankings(league, week=None):
     p_rank_same_emoji = "🟰"
 
     # Get the power rankings for the previous 2 weeks
+    week = max(week, 1)
     current_rankings = league.power_rankings(week=week)
-    previous_rankings = league.power_rankings(week=week-1) if week > 1 else []
+    previous_rankings = league.power_rankings(week=week - 1) if week > 1 else []
 
     # Normalize the scores
     def normalize_rankings(rankings):
         if not rankings:
             return []
         max_score = max(float(score) for score, _ in rankings)
+        if max_score == 0:
+            # Nothing has been scored yet (e.g. before week 1 games finish).
+            return [("0.00", team) for _, team in rankings]
         return [(f"{99.99 * float(score) / max_score:.2f}", team) for score, team in rankings]
 
 
@@ -466,10 +496,11 @@ def get_power_rankings(league, week=None):
 
         # Check if the team was present in the normalized previous rankings
         if team_abbrev in previous_rankings_dict:
-            previous_score = previous_rankings_dict[team_abbrev]
-            rank_change_percent = ((float(normalized_current_score) - float(previous_score)) / float(previous_score)) * 100
-            rank_change_emoji = p_rank_up_emoji if rank_change_percent > 0 else p_rank_down_emoji if rank_change_percent < 0 else p_rank_same_emoji
-            rank_change_text = f"[{rank_change_emoji}{abs(rank_change_percent):4.1f}%]"
+            previous_score = float(previous_rankings_dict[team_abbrev])
+            if previous_score != 0:
+                rank_change_percent = ((float(normalized_current_score) - previous_score) / previous_score) * 100
+                rank_change_emoji = p_rank_up_emoji if rank_change_percent > 0 else p_rank_down_emoji if rank_change_percent < 0 else p_rank_same_emoji
+                rank_change_text = f"[{rank_change_emoji}{abs(rank_change_percent):4.1f}%]"
 
         rankings_text.append(f"{normalized_current_score}{rank_change_text} ({current_team.playoff_pct:4.1f}) - {team_abbrev}")
 
@@ -491,45 +522,11 @@ def get_starter_counts(league):
         A dictionary containing the number of players at each position within the starting lineup.
     """
 
-    # Get the box scores for last week
-    box_scores = league.box_scores(week=league.current_week - 1)
-    # Initialize a dictionary to store the home team's starters and their positions
-    h_starters = {}
-    # Initialize a variable to keep track of the number of home team starters
-    h_starter_count = 0
-    # Initialize a dictionary to store the away team's starters and their positions
-    a_starters = {}
-    # Initialize a variable to keep track of the number of away team starters
-    a_starter_count = 0
-    # Iterate through each game in the box scores
-    for i in box_scores:
-        # Iterate through each player in the home team's lineup
-        for player in i.home_lineup:
-            # Check if the player is a starter (not on the bench or injured)
-            if (player.slot_position != 'BE' and player.slot_position != 'IR'):
-                # Increment the number of home team starters
-                h_starter_count += 1
-                try:
-                    # Try to increment the count for this position in the h_starters dictionary
-                    h_starters[player.slot_position] = h_starters[player.slot_position] + 1
-                except KeyError:
-                    # If the position is not in the dictionary yet, add it and set the count to 1
-                    h_starters[player.slot_position] = 1
-        # in the rare case when someone has an empty slot we need to check the other team as well
-        for player in i.away_lineup:
-            if (player.slot_position != 'BE' and player.slot_position != 'IR'):
-                a_starter_count += 1
-                try:
-                    a_starters[player.slot_position] = a_starters[player.slot_position] + 1
-                except KeyError:
-                    a_starters[player.slot_position] = 1
-
-        # if statement for the ultra rare case of a matchup with both entire teams (or one with a bye) on the bench
-        if a_starter_count!=0 and h_starter_count != 0:
-            if a_starter_count > h_starter_count:
-                return a_starters
-            else:
-                return h_starters
+    # Read the slot counts straight from league settings. Deriving them from a
+    # box score breaks whenever that week's rosters are on bye or were never set,
+    # and returned None when every lineup was empty.
+    return {pos: count for pos, count in league.settings.position_slot_counts.items()
+            if pos not in ('BE', 'IR') and count != 0}
 
 
 def best_flex(flexes, player_pool, num):
@@ -935,6 +932,9 @@ def get_trophies(league, week=None, recap=False):
     high_score = -1
     closest_score = 99999999
     biggest_blowout = -1
+    high_team = low_team = None
+    close_winner = close_loser = None
+    ownerer = blown_out = None
 
     for i in matchups:
         if i.home_team != 0:
@@ -971,17 +971,28 @@ def get_trophies(league, week=None, recap=False):
                     ownerer = i.away_team
                     blown_out = i.home_team
 
+    if high_team is None:
+        # No scored matchups that week (empty schedule, or every team on a bye).
+        return (None, None, None, None) if recap else 'No trophies to hand out this week.'
+
     if (recap):
         return high_team.team_abbrev, low_team.team_abbrev, blown_out.team_abbrev, close_winner.team_abbrev
 
     high_score_str = ['👑 High score 👑']+['%s with %.2f points' % (high_team.team_name, high_score)]
     low_score_str = ['💩 Low score 💩']+['%s with %.2f points' % (low_team.team_name, low_score)]
-    close_score_str = ['😅 Close win 😅']+['%s barely beat %s by %.2f points' %
-                                         (close_winner.team_name, close_loser.team_name, closest_score)]
-    blowout_str = ['😱 Blow out 😱']+['%s blew out %s by %.2f points' % (ownerer.team_name, blown_out.team_name, biggest_blowout)]
 
-    text = ['Trophies of the week:'] + high_score_str + low_score_str + blowout_str + close_score_str + \
-        get_lucky_trophy(league, week) + get_achievers_trophy(league, week) + optimal_team_scores(league, week) + get_most_active_and_laziest(league, week)
+    text = ['Trophies of the week:'] + high_score_str + low_score_str
+
+    # A week can lack a blowout or a close game (e.g. a single matchup, or all ties).
+    if ownerer is not None:
+        text += ['😱 Blow out 😱', '%s blew out %s by %.2f points' %
+                 (ownerer.team_name, blown_out.team_name, biggest_blowout)]
+    if close_winner is not None:
+        text += ['😅 Close win 😅', '%s barely beat %s by %.2f points' %
+                 (close_winner.team_name, close_loser.team_name, closest_score)]
+
+    text += (get_lucky_trophy(league, week) + get_achievers_trophy(league, week) +
+             optimal_team_scores(league, week) + get_most_active_and_laziest(league, week))
     return '\n'.join(text)
 
 def get_player_status(league, player_name):

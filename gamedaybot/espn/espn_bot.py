@@ -24,6 +24,7 @@ else:
 
 
 from espn_api.football import League
+from datetime import date
 import json
 import logging
 
@@ -120,7 +121,7 @@ def espn_bot(function):
     try:
         year = int(data['year'])
     except KeyError:
-        year = 2024
+        year = date.today().year
 
     try:
         swid = data['swid']
@@ -176,10 +177,25 @@ def espn_bot(function):
     except KeyError:
         broadcast_message = None
 
-    # always let init and broadcast run
-    if function not in ["init", "broadcast", "win_matrix", "trophy_recap"] and league.scoringPeriodId > len(league.settings.matchup_periods):
-        logger.info("Not in active season")
-        return
+    # These never depend on the season being live.
+    always_run = ["init", "broadcast", "win_matrix", "trophy_recap"]
+    # These report on the week that just ended, so they must still fire on the
+    # Tuesday after the final week -- by then scoringPeriodId has already rolled
+    # past the last matchup period and the plain guard below would skip them.
+    end_of_season_recaps = ["get_final", "get_trophies", "get_power_rankings", "get_standings"]
+
+    if function in always_run:
+        grace_weeks = None
+    elif function in end_of_season_recaps:
+        grace_weeks = 1
+    else:
+        grace_weeks = 0
+
+    if grace_weeks is not None:
+        last_matchup_week = len(league.settings.matchup_periods)
+        if league.scoringPeriodId > last_matchup_week + grace_weeks:
+            logger.info("Not in active season")
+            return
 
     text = ''
     logger.info("Function: " + function)
@@ -213,7 +229,7 @@ def espn_bot(function):
         # discord_bot.send_message(text, file_path='/tmp/season_recap.png')
     elif function == "get_final":
         # on Tuesday we need to get the scores of last week
-        week = league.current_week - 1
+        week = espn.last_completed_week(league)
         text = "Final " + espn.get_scoreboard_short(league, week=week)
         text = text + "\n\n" + espn.get_trophies(league, week=week)
     elif function == "get_waiver_report" and swid != '{1}' and espn_s2 != '1':

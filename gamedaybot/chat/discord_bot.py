@@ -11,7 +11,8 @@ class FantasyFootballCog(commands.Cog):
     def __init__(self, bot, league, guild_id):
         self.bot = bot
         self.league = league
-        self.guild = discord.Object(id=guild_id)
+        # DISCORD_SERVER_ID is optional; discord.Object(id=None) raises TypeError.
+        self.guild = discord.Object(id=guild_id) if guild_id else None
 
     @app_commands.command(description="Get current scores for the week.")
     async def current_scores(self, interaction):
@@ -56,12 +57,12 @@ class FantasyFootballCog(commands.Cog):
     @app_commands.command(description="Get season recap.")
     async def recap(self, interaction):
         await interaction.response.defer()
-        await interaction.followup.send_message(self.codeblock(recap.trophy_recap(self.league)))
+        await interaction.followup.send(self.codeblock(recap.trophy_recap(self.league)))
 
     @app_commands.command(description="Get season win matrix.")
     async def win_matrix(self, interaction):
         await interaction.response.defer()
-        await interaction.followup.send_message(self.codeblock(recap.win_matrix(self.league)))
+        await interaction.followup.send(self.codeblock(recap.win_matrix(self.league)))
 
     @lineup.autocomplete('team_name')
     async def team_names_autocomplete(self, interaction, current: str):
@@ -78,5 +79,9 @@ class FantasyFootballCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
+        if self.guild is None:
+            # No guild configured: sync globally instead of crashing on startup.
+            await self.bot.tree.sync()
+            return
         self.bot.tree.copy_global_to(guild=self.guild)
         await self.bot.tree.sync(guild=self.guild)

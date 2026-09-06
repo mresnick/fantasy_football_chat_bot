@@ -1,21 +1,26 @@
 import os
+from datetime import date
 import gamedaybot.espn.functionality as espn
 import gamedaybot.utils.util as utils
 
 
 def get_env_vars():
     data = {}
+    # Default to the current season. Hardcoded years silently rot: a past
+    # END_DATE puts every cron job's end_date behind us, so no job ever fires.
+    current_year = date.today().year
+
     try:
         ff_start_date = os.environ["START_DATE"]
     except KeyError:
-        ff_start_date = '2024-09-05'
+        ff_start_date = '%d-09-05' % current_year
 
     data['ff_start_date'] = ff_start_date
 
     try:
         ff_end_date = os.environ["END_DATE"]
     except KeyError:
-        ff_end_date = '2024-12-31'
+        ff_end_date = '%d-12-31' % current_year
 
     data['ff_end_date'] = ff_end_date
 
@@ -40,24 +45,36 @@ def get_env_vars():
 
     data['monitor_report'] = monitor_report
 
-    str_limit = 40000  # slack char limit
+    # Per-platform message caps. Every message is sent to *all* configured
+    # platforms, so the limit has to be the smallest of the ones in use --
+    # assigning in sequence meant the last platform read simply won.
+    GROUPME_LIMIT = 1000
+    SLACK_LIMIT = 40000
+    # Discord caps message content at 2000 characters, and the bot wraps every
+    # message in a ``` code fence, which costs 6 more.
+    DISCORD_LIMIT = 2000 - 6
+
+    limits = []
 
     try:
         bot_id = os.environ["BOT_ID"]
-        str_limit = 1000
+        limits.append(GROUPME_LIMIT)
     except KeyError:
         bot_id = 1
 
     try:
         slack_webhook_url = os.environ["SLACK_WEBHOOK_URL"]
+        limits.append(SLACK_LIMIT)
     except KeyError:
         slack_webhook_url = 1
 
     try:
         discord_webhook_url = os.environ["DISCORD_WEBHOOK_URL"]
-        str_limit = 3000
+        limits.append(DISCORD_LIMIT)
     except KeyError:
         discord_webhook_url = 1
+
+    str_limit = min(limits) if limits else SLACK_LIMIT
 
     if (len(str(bot_id)) <= 1 and
         len(str(slack_webhook_url)) <= 1 and
@@ -76,7 +93,7 @@ def get_env_vars():
     try:
         year = int(os.environ["LEAGUE_YEAR"])
     except KeyError:
-        year = 2024
+        year = current_year
 
     data['year'] = year
 

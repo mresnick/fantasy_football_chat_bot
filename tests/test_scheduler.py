@@ -106,8 +106,8 @@ class TestScheduler:
         assert power_rankings_call is not None
         assert power_rankings_call[0][2] == ['get_power_rankings']
         assert power_rankings_call[1]['day_of_week'] == 'tue'
-        assert power_rankings_call[1]['hour'] == 18
-        assert power_rankings_call[1]['minute'] == 30
+        assert power_rankings_call[1]['hour'] == 20
+        assert power_rankings_call[1]['minute'] == 5
         assert power_rankings_call[1]['timezone'] == mock_env_data['my_timezone']
     
     @patch('gamedaybot.espn.scheduler.BlockingScheduler')
@@ -131,8 +131,8 @@ class TestScheduler:
         assert final_call is not None
         assert final_call[0][2] == ['get_final']
         assert final_call[1]['day_of_week'] == 'tue'
-        assert final_call[1]['hour'] == 9
-        assert final_call[1]['minute'] == 45
+        assert final_call[1]['hour'] == 20
+        assert final_call[1]['minute'] == 40
     
     @patch('gamedaybot.espn.scheduler.BlockingScheduler')
     @patch('gamedaybot.espn.scheduler.get_env_vars')
@@ -192,20 +192,27 @@ class TestScheduler:
         
         scheduler()
         
-        # Find waiver report job calls
-        waiver_calls = [call for call in mock_scheduler_instance.add_job.call_args_list 
-                       if call[1].get('id') == 'waiver_report']
-        
-        # Should have daily waiver report job (replaces Wednesday-only)
+        waiver_calls = [call for call in mock_scheduler_instance.add_job.call_args_list
+                        if call[0][2] == ['get_waiver_report']]
+
         daily_waiver_call = None
+        wednesday_call = None
         for call in waiver_calls:
-            if 'mon, tue, thu, fri, sat, sun' in call[1].get('day_of_week', ''):
+            day_of_week = call[1].get('day_of_week', '')
+            if 'mon, tue, thu, fri, sat, sun' in day_of_week:
                 daily_waiver_call = call
-                break
-        
+            elif day_of_week == 'wed':
+                wednesday_call = call
+
         assert daily_waiver_call is not None
         assert daily_waiver_call[1]['hour'] == 7
         assert daily_waiver_call[1]['minute'] == 31
+
+        # The daily job must not reuse the Wednesday job's id: APScheduler applies
+        # replace_existing when the pending jobs are flushed on start(), which
+        # dropped the Wednesday run entirely and left every day *but* Wednesday.
+        assert wednesday_call is not None
+        assert daily_waiver_call[1]['id'] != wednesday_call[1]['id']
     
     @patch('gamedaybot.espn.scheduler.BlockingScheduler')
     @patch('gamedaybot.espn.scheduler.get_env_vars')

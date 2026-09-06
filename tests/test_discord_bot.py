@@ -50,11 +50,13 @@ class TestFantasyFootballCog:
         # Create cog instance
         self.cog = FantasyFootballCog(self.mock_bot, self.mock_league, self.guild_id)
         
-        # Mock interaction
+        # Mock interaction. followup is spec'd against discord.Webhook so that
+        # calling a method the real API does not have (e.g. followup.send_message,
+        # which only exists on InteractionResponse) fails here instead of at runtime.
         self.mock_interaction = AsyncMock()
         self.mock_interaction.response.send_message = AsyncMock()
         self.mock_interaction.response.defer = AsyncMock()
-        self.mock_interaction.followup.send_message = AsyncMock()
+        self.mock_interaction.followup = AsyncMock(spec=discord.Webhook)
 
     def test_init(self):
         """Test FantasyFootballCog initialization"""
@@ -218,7 +220,7 @@ class TestFantasyFootballCog:
         mock_trophy_recap.assert_called_once_with(self.mock_league)
         # Note: recap uses defer() then followup.send_message()
         self.mock_interaction.response.defer.assert_called_once()
-        self.mock_interaction.followup.send_message.assert_called_once()
+        self.mock_interaction.followup.send.assert_called_once()
 
     @patch('gamedaybot.espn.season_recap.win_matrix')
     @pytest.mark.asyncio
@@ -231,7 +233,7 @@ class TestFantasyFootballCog:
         mock_win_matrix.assert_called_once_with(self.mock_league)
         # Note: win_matrix uses defer() then followup.send_message()
         self.mock_interaction.response.defer.assert_called_once()
-        self.mock_interaction.followup.send_message.assert_called_once()
+        self.mock_interaction.followup.send.assert_called_once()
 
     @patch('gamedaybot.espn.functionality.get_team_names')
     @pytest.mark.asyncio
@@ -352,7 +354,7 @@ class TestFantasyFootballCog:
             
             # Verify defer was called before followup
             self.mock_interaction.response.defer.assert_called_once()
-            self.mock_interaction.followup.send_message.assert_called_once()
+            self.mock_interaction.followup.send.assert_called_once()
             # Ensure regular send_message was not called for deferred commands
             assert self.mock_interaction.response.send_message.call_count == 0
 

@@ -14,7 +14,7 @@ from gamedaybot.espn.functionality import (
     get_matchups, get_close_scores, get_monitor, get_waiver_report,
     get_power_rankings, get_trophies, get_draft_reminder, all_played,
     scan_roster, top_half_wins, OrderedBoxPlayer, optimal_lineup_score,
-    get_starter_counts, best_flex
+    get_starter_counts, best_flex, last_completed_week
 )
 
 
@@ -31,6 +31,10 @@ class TestFunctionality:
         # Mock settings
         league.settings = Mock()
         league.settings.matchup_periods = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+        league.settings.position_slot_counts = {
+            'QB': 1, 'RB': 2, 'WR': 2, 'TE': 1, 'RB/WR/TE': 1,
+            'D/ST': 1, 'K': 1, 'BE': 7, 'IR': 1, 'P': 0,
+        }
         league.settings.faab = True
         league.settings.name = "Test League"
         league.settings.team_count = 12
@@ -376,8 +380,23 @@ class TestFunctionality:
         result = get_starter_counts(mock_league)
         
         assert isinstance(result, dict)
-        assert "QB" in result
-        assert "RB" in result
+        assert result == {'QB': 1, 'RB': 2, 'WR': 2, 'TE': 1, 'RB/WR/TE': 1, 'D/ST': 1, 'K': 1}
+        # bench/IR are not starting slots, and unused slots are dropped
+        assert 'BE' not in result and 'IR' not in result
+        assert 'P' not in result
+
+    def test_get_starter_counts_ignores_empty_lineups(self, mock_league):
+        """Counts come from league settings, so a bye week or unset rosters
+        must not produce None (which used to crash optimal_lineup_score)."""
+        empty = Mock()
+        empty.home_lineup = []
+        empty.away_lineup = []
+        mock_league.box_scores.return_value = [empty]
+
+        result = get_starter_counts(mock_league)
+
+        assert result is not None
+        assert result['QB'] == 1
     
     def test_best_flex(self):
         """Test best_flex function"""
@@ -575,3 +594,77 @@ class TestFunctionality:
         
         assert "Is CMC still injured?" in result
         assert "NO!!!" in result
+
+
+class TestLastCompletedWeek:
+    """The week arithmetic behind the Tuesday recap, especially at season's end.
+
+    espn_api clamps league.current_week to finalScoringPeriod but leaves
+    scoringPeriodId free to advance, so `current_week - 1` silently points at the
+    wrong week once the regular season is over.
+    """
+
+    @staticmethod
+    def _league(scoring_period_id, last_matchup_week=17):
+        league = Mock()
+        league.scoringPeriodId = scoring_period_id
+        league.settings = Mock()
+        league.settings.matchup_periods = list(range(1, last_matchup_week + 1))
+        # Mirror espn_api: current_week is clamped, scoringPeriodId is not.
+        league.current_week = min(scoring_period_id, last_matchup_week)
+        return league
+
+    def test_midseason_reports_the_week_that_just_ended(self):
+        # Tuesday after week 5: scoringPeriodId has rolled to 6.
+        assert last_completed_week(self._league(6)) == 5
+
+    def test_tuesday_after_final_week_reports_the_final_week(self):
+        # The regression: scoringPeriodId is 18, current_week is pinned at 17.
+        league = self._league(18)
+        assert league.current_week - 1 == 16  # what the old code produced
+        assert last_completed_week(league) == 17
+
+    def test_does_not_advance_past_the_final_week(self):
+        assert last_completed_week(self._league(19)) == 17
+        assert last_completed_week(self._league(25)) == 17
+
+    def test_never_returns_a_week_below_one(self):
+        assert last_completed_week(self._league(1)) == 1
+        assert last_completed_week(self._league(0)) == 1
+
+
+class TestPowerRankingsEdgeCases:
+    """Normalization divides by scores that can legitimately be zero."""
+
+    @staticmethod
+    def _team(abbrev, playoff_pct=50.0):
+        team = Mock()
+        team.team_abbrev = abbrev
+        team.playoff_pct = playoff_pct
+        return team
+
+    def test_all_zero_previous_week_does_not_divide_by_zero(self):
+        alpha, bravo = self._team("AA"), self._team("BB")
+        league = Mock()
+        league.current_week = 4
+
+        def power_rankings(week=None):
+            if week == 2:
+                return [(0.0, alpha), (0.0, bravo)]
+            return [(10.0, alpha), (5.0, bravo)]
+
+        league.power_rankings.side_effect = power_rankings
+
+        result = get_power_rankings(league)
+
+        assert "AA" in result and "BB" in result
+
+    def test_all_zero_current_week_does_not_divide_by_zero(self):
+        alpha, bravo = self._team("AA"), self._team("BB")
+        league = Mock()
+        league.current_week = 2
+        league.power_rankings.return_value = [(0.0, alpha), (0.0, bravo)]
+
+        result = get_power_rankings(league)
+
+        assert "0.00" in result
